@@ -9,74 +9,67 @@ Knowledge repository for the AI-First Taskforce. This repo collects best practic
 ```
 ai-first-taskforce/
 ├── templates/
-│   ├── CLAUDE.md           Generalized CLAUDE.md — copy to a new project before build week
-│   ├── trial-review.md     Blank post-trial review template
-│   └── trial-goals.md      Goals and success criteria template — fill in before each trial
-├── skills/
-│   ├── skills.md           /skills — lightweight pre-merge checklist (pass/fail table)
-│   └── review-pr.md        /review-pr — full automated PR review workflow
+│   ├── CLAUDE.md                        Generalized CLAUDE.md — copy to a new project before build week
+│   ├── trial-review.md                  Blank post-trial review template
+│   ├── trial-goals.md                   Goals and success criteria template — fill in before each trial
+│   └── skills/
+│       ├── SKILLS.md                    Agent-readable routing index — start here to find the right skill
+│       ├── by-stack/
+│       │   └── nextjs-ts-prisma/
+│       │       ├── pre-merge-audit/     Pre-merge checklist for Next.js + TypeScript + Prisma projects
+│       │       └── review-pr/           Full PR review workflow for Next.js + TypeScript + Prisma projects
+│       └── by-function/
+│           └── web-app-with-db/         Opinionated skill set for web apps with a database (uses nextjs-ts-prisma)
 └── trials/
-    └── sums/               Artifacts from Trial 1: SuMS (Feb–Mar 2026)
-        ├── CLAUDE.md       SuMS project rules (the source for templates/CLAUDE.md)
-        └── trial-review.md SuMS post-trial review with gaps log
+    └── sums/                            Artifacts from Trial 1: SuMS (Feb–Mar 2026)
+        ├── CLAUDE.md                    SuMS project rules (the source for templates/CLAUDE.md)
+        ├── trial-review.md              SuMS post-trial review with gaps log
+        └── skills/                      SuMS-specific skills (source for templates/skills/by-stack/nextjs-ts-prisma/)
+            ├── pre-merge-audit/
+            ├── review-pr/
+            └── run-local/
 ```
 
 ---
 
 ## Skills
 
-The `skills/` directory contains two Claude Code custom commands. Copy them into any project repo to activate automated code review.
+`templates/skills/` contains Claude Code skills for automated code review. Skills are organized in two ways — by stack (for experienced developers who know their tech) and by function (for non-coders who know what their app does).
+
+### Finding the right skill
+
+The easiest way is to ask your agent to read `templates/skills/SKILLS.md`. It will inspect your project, detect the stack from observable signals, and load the matching skill automatically.
+
+If you know your stack, go directly to `templates/skills/by-stack/<your-stack>/`.
 
 ### Installing skills in a project
 
+Copy the matched skill directory into your project's `.claude/skills/` folder:
+
 ```bash
-mkdir -p .claude/commands
-cp path/to/ai-first-taskforce/skills/skills.md .claude/commands/skills.md
-cp path/to/ai-first-taskforce/skills/review-pr.md .claude/commands/review-pr.md
+mkdir -p .claude/skills
+cp -r path/to/ai-first-taskforce/templates/skills/by-stack/nextjs-ts-prisma/pre-merge-audit .claude/skills/
+cp -r path/to/ai-first-taskforce/templates/skills/by-stack/nextjs-ts-prisma/review-pr .claude/skills/
 ```
 
-Commit `.claude/commands/` to the project repo so the skills are available to everyone working in it.
+Commit `.claude/skills/` to the project repo so skills are available to everyone.
 
-> **One-time setup:** `review-pr.md` Phase 5 references the trial review file to log new gap patterns. Update the path on line 363 from `docs/agentic-trial-review-template.md` to wherever your project keeps its trial review document (e.g. `trials/<project-name>/trial-review.md` in this repo, or a local `docs/` path in the project repo).
+> **One-time setup:** `review-pr/SKILL.md` Phase 5 references `[ path/to/trial-review.md ]`. Update this to wherever your project keeps its trial review document before using the skill.
 
-### `/skills` — pre-merge checklist
+### Available skills
 
-Invoke with `/skills` in a Claude Code session before opening a PR.
-
-Runs a focused audit of the current working tree and staged changes. Covers:
-
-| Area | How it checks |
+| Skill | What it does |
 |---|---|
-| Husky hooks | Verifies pre-commit and pre-push hooks are installed and contain the expected commands |
-| Credentials & secrets | Confirms `.env.example` is tracked, `.gitignore` has no `env*` wildcard, no env files staged |
-| Code organisation | Scans for shared constants redeclared per page; flags orphaned/deprecated files |
-| Docker & Prisma | Confirms `prisma migrate deploy` is in the deployment runbook if Prisma files changed |
-| Raw SQL queries | Checks for unsafe `$queryRawUnsafe` / `Prisma.raw()` patterns with user-supplied input |
-| Infrastructure | Checks for autonomous KMS changes, local prod applies, undocumented TLS cert decisions |
-| Environment config | Verifies every `process.env.VAR` in the codebase has a corresponding `.env.example` entry |
+| `pre-merge-audit` | Focused pass/fail audit before opening a PR. Checks husky hooks, secrets, code organisation, Prisma, raw SQL, infrastructure, and env var coverage. Output: a pass/fail table. Any FAIL on a Critical or High item blocks merge. |
+| `review-pr` | Full PR review workflow. Rebases onto main, resolves conflicts, scans for violations, runs build and tests, documents new gap patterns, then fixes each item in a separate commit. Use as the SWE's merge-readiness pass. |
 
-Output: a pass/fail table. Any FAIL on a Critical or High item blocks merge.
+### Available stacks
 
-**Use this** for a quick sense-check before raising a PR, or during the build week to keep Claude on track.
-
-### `/review-pr` — full PR review workflow
-
-Invoke with `/review-pr` in a Claude Code session on your PR branch.
-
-Runs end-to-end and fixes violations autonomously. Phases:
-
-| Phase | What happens |
+| Stack | Path |
 |---|---|
-| 0 — Rebase | Fetches main, rebases the branch, resolves conflicts, regenerates Prisma client |
-| 1 — Analysis | Reads PR metadata, extracts test plan steps, collects changed files and full diff |
-| 2 — Test coverage | Maps changed `src/lib/` and `src/app/api/` files to expected unit and integration tests; flags gaps |
-| 3 — Code standards | Runs gitleaks, scans for `any` casts, `eslint-disable`, shared constants, orphaned files, missing env vars, build-time DB calls, Dockerfile integrity |
-| 4 — Build & test | Runs `npm test`, `npm run build`, and (if a local test DB is available) `npm run test:api` |
-| TODO list | Renders all findings prioritised Critical → High → Medium → Low before touching any code |
-| 5 — Document | Adds new gap patterns to the trial review doc and updates `CLAUDE.md` rules |
-| 6 — Execute | Works through the TODO list one item at a time, each committed separately with a typed commit message |
+| Next.js · TypeScript · Prisma · PostgreSQL | `templates/skills/by-stack/nextjs-ts-prisma/` |
 
-**Use this** as the SWE's merge-readiness pass before any PR is merged to main. It replaces a manual code review for the categories it covers and produces a clean, commit-per-fix audit trail.
+More stacks will be added as trials are completed. To contribute a new stack skill, follow the structure in `by-stack/nextjs-ts-prisma/` and open a PR.
 
 ---
 
