@@ -38,4 +38,6 @@ Use ISO format (YYYY-MM-DD) for all dates in this repo.
 
 ## No Application Code
 
-This is a documentation repo. Do not add `package.json`, build tooling, or application code. Markdown and plain text only.
+This is a documentation repo. Do not add application code. Markdown and plain text only.
+
+**Exception — Slidev (presentation tooling):** `package.json`, `package-lock.json`, and the `node_modules/` directory at the repo root exist solely to support the Slidev presentation framework used for the `decks/` directory. Do not add other build tooling or application code beyond this exception.

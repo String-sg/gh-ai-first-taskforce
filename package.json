@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "preview": "bash scripts/preview.sh",
+    "export": "bash scripts/export.sh",
+    "setup": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@slidev/cli": "^52.15.2",
+    "@slidev/theme-default": "^0.25.0"
+  }
+}
