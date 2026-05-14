@@ -1,0 +1,31 @@
+/* DxD brand palette: navy #1B2D60, lime #AEDC41 */
+
+:root {
+  --slidev-theme-primary: #1B2D60;
+  --slidev-theme-secondary: #AEDC41;
+}
+
+/* Headings */
+.slidev-layout h1,
+.slidev-layout h2 {
+  color: #1B2D60;
+}
+
+/* Bold/strong emphasis */
+.slidev-layout strong {
+  color: #1B2D60;
+}
+
+/* Blockquotes — lime left border */
+.slidev-layout blockquote {
+  border-left: 4px solid #AEDC41;
+  background: #f8fdf0;
+  padding: 0.5em 1em;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Clear the logo (top) and the GlobalBottom footer */
+.slidev-layout {
+  padding-top: 52px !important;
+  padding-bottom: 40px !important;
+}
