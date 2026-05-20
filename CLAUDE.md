@@ -39,3 +39,16 @@ Use ISO format (YYYY-MM-DD) for all dates in this repo.
 ## No Application Code
 
 This is a documentation repo. Do not add `package.json`, build tooling, or application code. Markdown and plain text only.
+
+---
+
+## Shell Scripts (gh Extension)
+
+This repo doubles as a `gh` CLI extension. Shell scripts are permitted in these locations:
+
+- `gh-ai-first-taskforce` — extension entry point (repo root)
+- `harness/` — setup scripts and helpers
+- `tests/` — bats-based tests for harness scripts
+- `tests/mocks/` — stub binaries used during shell testing
+
+Do not add `package.json`, build tooling, or non-shell application code outside of these locations.
