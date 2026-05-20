@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+EXTENSION_DIR="$(cd "$(dirname "$0")" && pwd)"
+COMMAND="${1:-help}"
+shift 2>/dev/null || true
+
+case "$COMMAND" in
+  setup)
+    sh "$EXTENSION_DIR/harness/setup.sh" "$@"
+    ;;
+  help|--help|-h)
+    echo "Usage: gh ai-first-taskforce <command>"
+    echo ""
+    echo "Commands:"
+    echo "  setup    Scaffold Husky hooks into the current repo"
+    ;;
+  *)
+    echo "Unknown command: $COMMAND" >&2
+    echo "Run 'gh ai-first-taskforce help' for usage." >&2
+    exit 1
+    ;;
+esac
