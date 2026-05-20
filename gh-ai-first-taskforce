@@ -7,7 +7,7 @@ shift 2>/dev/null || true
 
 case "$COMMAND" in
   setup)
-    bash "$EXTENSION_DIR/harness/setup.sh"
+    sh "$EXTENSION_DIR/harness/setup.sh" "$@"
     ;;
   help|--help|-h)
     echo "Usage: gh ai-first-taskforce <command>"
