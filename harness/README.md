@@ -85,6 +85,9 @@ harness/
     detect-package-manager.sh   # detect_package_manager <dir>
     merge-hook.sh               # merge_block, ensure_hook_exists
     husky.sh                    # ensure_husky_installed, ensure_husky_init
+    ci-workflows.sh             # install_workflow_file, detect_overlapping_workflows
+  workflows/
+    harness-checks.yml          # CI workflow template — installed into target repos
 ```
 
 ## Running tests

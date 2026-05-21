@@ -165,6 +165,24 @@ teardown() {
   [[ "$output" == *"WARNING"* ]]
 }
 
+@test "detect_overlapping_workflows: warns when workflow contains tsc" {
+  mkdir -p "$REPO_DIR/.github/workflows"
+  printf 'name: CI\njobs:\n  typecheck:\n    steps:\n      - run: tsc --noEmit\n' \
+    > "$REPO_DIR/.github/workflows/ci.yml"
+  run detect_overlapping_workflows "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WARNING"* ]]
+}
+
+@test "detect_overlapping_workflows: warns when workflow contains gitleaks" {
+  mkdir -p "$REPO_DIR/.github/workflows"
+  printf 'name: Security\njobs:\n  secrets:\n    steps:\n      - run: gitleaks detect\n' \
+    > "$REPO_DIR/.github/workflows/security.yml"
+  run detect_overlapping_workflows "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WARNING"* ]]
+}
+
 @test "detect_overlapping_workflows: does not warn for harness-checks.yml itself" {
   mkdir -p "$REPO_DIR/.github/workflows"
   printf 'name: Harness\njobs:\n  harness:\n    steps:\n      - run: npx eslint .\n' \
