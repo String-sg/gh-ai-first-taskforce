@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extend the harness to install ESLint + lint-staged for JS/TS repos (and golangci-lint for mixed repos), merge lint hooks into Husky pre-commit, and ship pre-tailored CI workflow templates — one per repo type — with no language detection logic in CI.
+**Goal:** Extend the harness to install ESLint + lint-staged for JS/TS repos (and golangci-lint for mixed repos), merge lint hooks into Husky pre-commit, and generate and install a CI workflow YAML on the fly for the detected repo type and package manager — with no runtime detection in CI.
 
-**Architecture:** A new `harness/lib/lint.sh` library installs linting tools, writes default configs, and merges idempotent pre-commit hook blocks via `merge_block`. `setup.sh` sources it and calls the new functions after Husky setup. Rather than one workflow template with runtime language if-else, `install_workflow_file` is extended to accept a template filename so `setup.sh` can select `harness-checks-js.yml` or `harness-checks-mixed.yml` at install time — each is a clean, purpose-built workflow. The only remaining runtime detection in CI is pnpm vs bun, which cannot be eliminated without four templates.
+**Architecture:** A new `harness/lib/lint.sh` library installs linting tools, writes default configs, and merges idempotent pre-commit hook blocks via `merge_block`. `setup.sh` sources it and calls the new functions after Husky setup. A new `generate_workflow_yaml <lang> <pm>` function in `ci-workflows.sh` emits the full workflow YAML using heredocs and case/if branches, baking in the detected PM. `install_workflow_file` accepts `<repo_root> <lang> <pm>`, checksums the generated content, and writes it only when it has changed. No runtime PM or language detection occurs in the installed workflow — `setup.sh` detects both at install time and passes them to the generator.
 
 **Tech Stack:** POSIX sh, bats-core (tests), lint-staged (npm), ESLint (npm), golangci-lint (Go binary), golangci/golangci-lint-action@v6 (GitHub Actions)
 
@@ -17,13 +17,11 @@
 | Create | `harness/lib/lint.sh` | `_is_npm_dep_present`, `ensure_eslint_installed`, `ensure_lint_staged_installed`, `ensure_eslint_config`, `ensure_lint_staged_config`, `ensure_golangci_lint_available`, `ensure_golangci_config`, `install_lint_staged_hook`, `install_golangci_hook` |
 | Create | `tests/harness/lint.bats` | Unit tests for all lint.sh functions |
 | Create | `tests/mocks/go` | Mock go binary — logs invocations to $MOCK_LOG, returns 0 |
-| Create | `harness/workflows/harness-checks-js.yml` | CI template for JS/TS repos: node setup + pnpm/bun dep install + ESLint |
-| Create | `harness/workflows/harness-checks-mixed.yml` | CI template for mixed repos: same as js plus setup-go + golangci-lint |
-| Modify | `harness/lib/ci-workflows.sh` | Add optional `template_name` arg to `install_workflow_file` |
-| Modify | `tests/harness/ci-workflows.bats` | Add test for template selection; update call sites to pass template name explicitly |
-| Modify | `harness/setup.sh` | Source lint.sh; call lint functions; pass `"harness-checks-${REPO_LANG}.yml"` to `install_workflow_file` |
+| Modify | `harness/lib/ci-workflows.sh` | Add `generate_workflow_yaml <lang> <pm>`; redesign `install_workflow_file <repo_root> <lang> <pm>` |
+| Modify | `tests/harness/ci-workflows.bats` | Add 4 `generate_workflow_yaml` tests; replace `install_workflow_file` tests with new-signature versions |
+| Modify | `harness/setup.sh` | Source lint.sh; call lint functions; detect PM; pass `"$REPO_LANG" "$REPO_PM"` to `install_workflow_file` |
 | Modify | `tests/harness/setup.bats` | Add integration assertions for lint hook and config files |
-| Modify | `harness/README.md` | Document linting section and two workflow templates |
+| Modify | `harness/README.md` | Document linting section; update CI workflow prose and directory structure |
 
 ---
 
@@ -546,87 +544,152 @@ git commit -m "feat: add lint.sh with ESLint, lint-staged, and golangci-lint set
 
 ---
 
-### Task 4: Extend `install_workflow_file` and create per-type workflow templates (TDD)
+### Task 4: Implement `generate_workflow_yaml` and redesign `install_workflow_file` (TDD)
 
 **Files:**
-- Modify: `harness/lib/ci-workflows.sh`
 - Modify: `tests/harness/ci-workflows.bats`
-- Create: `harness/workflows/harness-checks-js.yml`
-- Create: `harness/workflows/harness-checks-mixed.yml`
+- Modify: `harness/lib/ci-workflows.sh`
 
-`install_workflow_file` currently hardcodes `harness-checks.yml` as the source template. This task adds an optional third argument `template_name` so `setup.sh` can select a pre-tailored template at install time. The destination in target repos stays `.github/workflows/harness-checks.yml` regardless of which source template was used.
+Replace the static-template approach with a `generate_workflow_yaml <lang> <pm>` function that emits the full workflow YAML using heredocs. `install_workflow_file` is redesigned to accept `<repo_root> <lang> <pm>`, call the generator, checksum the output, and write it only when content has changed. The destination in target repos stays `.github/workflows/harness-checks.yml`.
 
-- [ ] **Step 1: Add a failing test to `tests/harness/ci-workflows.bats`**
+- [ ] **Step 1: Replace the `install_workflow_file` test block in `tests/harness/ci-workflows.bats` (TDD red)**
 
-Append this test at the end of the existing `# ── install_workflow_file ──` section:
+Find the existing `# ── install_workflow_file ──` section (after the `_write_manifest_entry` tests) and the `# ── detect_overlapping_workflows ──` section. Replace everything between them (the install_workflow_file tests) with:
 
 ```bash
-@test "install_workflow_file: installs the specified template when template_name given" {
-  local tmp_harness="$REPO_DIR/tmp-harness"
-  mkdir -p "$tmp_harness/workflows"
-  printf 'name: Custom Checks\n' > "$tmp_harness/workflows/custom-checks.yml"
-  install_workflow_file "$REPO_DIR" "$tmp_harness" "custom-checks.yml"
-  grep -q "name: Custom Checks" "$REPO_DIR/.github/workflows/harness-checks.yml"
+# ── generate_workflow_yaml ───────────────────────────────────────────────
+
+@test "generate_workflow_yaml js pnpm: contains pnpm install, not bun or go steps" {
+  run generate_workflow_yaml "js" "pnpm"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pnpm install --frozen-lockfile"* ]]
+  [[ "$output" != *"bun install"* ]]
+  [[ "$output" != *"golangci-lint-action"* ]]
+}
+
+@test "generate_workflow_yaml js bun: contains bun install, not pnpm or go steps" {
+  run generate_workflow_yaml "js" "bun"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"bun install --frozen-lockfile"* ]]
+  [[ "$output" != *"pnpm install"* ]]
+  [[ "$output" != *"golangci-lint-action"* ]]
+}
+
+@test "generate_workflow_yaml mixed pnpm: contains pnpm install and golangci steps" {
+  run generate_workflow_yaml "mixed" "pnpm"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pnpm install --frozen-lockfile"* ]]
+  [[ "$output" == *"golangci-lint-action@v6"* ]]
+}
+
+@test "generate_workflow_yaml mixed bun: contains bun install and golangci steps" {
+  run generate_workflow_yaml "mixed" "bun"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"bun install --frozen-lockfile"* ]]
+  [[ "$output" == *"golangci-lint-action@v6"* ]]
+}
+
+# ── install_workflow_file ────────────────────────────────────────────────
+
+@test "install_workflow_file: creates .github/workflows/harness-checks.yml on first run" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  [ -f "$REPO_DIR/.github/workflows/harness-checks.yml" ]
+}
+
+@test "install_workflow_file: creates .github/harness-manifest.json on first run" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  [ -f "$REPO_DIR/.github/harness-manifest.json" ]
+}
+
+@test "install_workflow_file: manifest checksum matches generated content" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  local expected tmp
+  tmp=$(mktemp)
+  printf '%s\n' "$(generate_workflow_yaml "js" "pnpm")" > "$tmp"
+  expected=$(_sha256 "$tmp")
+  rm -f "$tmp"
+  run _read_manifest_checksum "$REPO_DIR/.github/harness-manifest.json" \
+    ".github/workflows/harness-checks.yml"
+  [ "$output" = "$expected" ]
+}
+
+@test "install_workflow_file: is silent on re-run with unchanged lang and pm" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  run install_workflow_file "$REPO_DIR" "js" "pnpm"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "install_workflow_file: prints Installed and updates when checksum is stale" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  _write_manifest_entry "$REPO_DIR/.github/harness-manifest.json" \
+    ".github/workflows/harness-checks.yml" \
+    "0000000000000000000000000000000000000000000000000000000000000000"
+  run install_workflow_file "$REPO_DIR" "js" "pnpm"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Installed"* ]]
+}
+
+@test "install_workflow_file: installs pnpm-specific content for pnpm repo" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  grep -q "pnpm install --frozen-lockfile" "$REPO_DIR/.github/workflows/harness-checks.yml"
+  ! grep -q "bun install" "$REPO_DIR/.github/workflows/harness-checks.yml"
 }
 ```
 
-- [ ] **Step 2: Run ci-workflows.bats to confirm the new test fails**
+- [ ] **Step 2: Run ci-workflows.bats to confirm the new tests fail**
 
 ```bash
 bats tests/harness/ci-workflows.bats
 ```
 
-Expected: the new test FAILS — `install_workflow_file` ignores the 3rd arg and uses `harness-checks.yml` as source, which doesn't exist in `$tmp_harness/workflows/`. All other tests still PASS.
+Expected: the 10 new/updated `generate_workflow_yaml` and `install_workflow_file` tests FAIL. All `_sha256`, `_read_manifest_checksum`, `_write_manifest_entry`, and `detect_overlapping_workflows` tests still PASS.
 
-- [ ] **Step 3: Update `install_workflow_file` in `harness/lib/ci-workflows.sh`**
+- [ ] **Step 3: Commit the failing tests**
 
-Replace only the function signature and template path line. The rest of the function body is unchanged. Change from:
+```bash
+git add tests/harness/ci-workflows.bats
+git commit -m "test: replace install_workflow_file tests with generated-YAML variants (TDD red)"
+```
+
+- [ ] **Step 4: Replace `harness/lib/ci-workflows.sh` with the on-the-fly implementation**
 
 ```sh
-install_workflow_file() {
-  local repo_root="$1" harness_dir="$2"
-  local template="$harness_dir/workflows/harness-checks.yml"
-```
+# _sha256 <file>: cross-platform SHA-256 hex digest
+_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
 
-To:
+# _read_manifest_checksum <manifest_file> <relative_path>
+# Prints the stored SHA-256 for <relative_path>, or empty string if absent.
+_read_manifest_checksum() {
+  local manifest_file="$1" path="$2"
+  [ -f "$manifest_file" ] || return 0
+  grep -F "\"$path\"" "$manifest_file" | grep -oE '[a-f0-9]{64}' | head -1
+}
 
-```sh
-install_workflow_file() {
-  local repo_root="$1" harness_dir="$2" template_name="${3:-harness-checks.yml}"
-  local template="$harness_dir/workflows/$template_name"
-```
+# _write_manifest_entry <manifest_file> <relative_path> <checksum>
+# Writes (or rewrites) a single-entry harness-manifest.json.
+# Note: rewrites the full file — extend for multi-file manifests in later stories.
+_write_manifest_entry() {
+  local manifest_file="$1" path="$2" checksum="$3"
+  mkdir -p "$(dirname "$manifest_file")"
+  printf '{\n  "harness_version": "1",\n  "files": {\n    "%s": "%s"\n  }\n}\n' \
+    "$path" "$checksum" > "$manifest_file"
+}
 
-- [ ] **Step 4: Run ci-workflows.bats to verify all tests pass**
+# generate_workflow_yaml <lang> <pm>
+# Emits the full harness-checks.yml content for the given repo type and package manager.
+# lang: js | mixed
+# pm:   pnpm | bun
+generate_workflow_yaml() {
+  local lang="$1" pm="$2"
 
-```bash
-bats tests/harness/ci-workflows.bats
-```
-
-Expected: all tests PASS including the new one. Existing tests continue to pass because they call `install_workflow_file` with two args, which defaults to `harness-checks.yml`.
-
-- [ ] **Step 5: Update existing `install_workflow_file` call sites in `tests/harness/ci-workflows.bats` to pass the template name explicitly**
-
-Find every call of the form `install_workflow_file "$REPO_DIR" "$harness_dir"` and add `"harness-checks.yml"` as a third argument. There are six such calls:
-
-```bash
-# Before (6 occurrences):
-install_workflow_file "$REPO_DIR" "$harness_dir"
-
-# After (6 occurrences):
-install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
-```
-
-- [ ] **Step 6: Run ci-workflows.bats again to confirm no regressions**
-
-```bash
-bats tests/harness/ci-workflows.bats
-```
-
-Expected: all tests PASS.
-
-- [ ] **Step 7: Create `harness/workflows/harness-checks-js.yml`**
-
-```yaml
+  cat <<'YAML'
 name: Harness Checks
 
 on:
@@ -640,80 +703,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect package manager
-        id: pm
-        run: |
-          if [ -f pnpm-lock.yaml ]; then
-            echo "pm=pnpm" >> "$GITHUB_OUTPUT"
-          elif [ -f bun.lock ] || [ -f bun.lockb ]; then
-            echo "pm=bun" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
+YAML
+
+  case "$pm" in
+    pnpm)
+      cat <<'YAML'
 
       - uses: pnpm/action-setup@v4
-        if: steps.pm.outputs.pm == 'pnpm'
         with:
           run_install: false
 
-      - name: Install dependencies (pnpm)
-        if: steps.pm.outputs.pm == 'pnpm'
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
+YAML
+      ;;
+    bun)
+      cat <<'YAML'
 
-      - name: Install dependencies (bun)
-        if: steps.pm.outputs.pm == 'bun'
+      - name: Install dependencies
         run: bun install --frozen-lockfile
+YAML
+      ;;
+  esac
+
+  cat <<'YAML'
 
       - name: Lint (ESLint)
         run: npx eslint .
-```
+YAML
 
-- [ ] **Step 8: Create `harness/workflows/harness-checks-mixed.yml`**
-
-```yaml
-name: Harness Checks
-
-on:
-  push:
-  pull_request:
-
-jobs:
-  harness:
-    name: harness / checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Detect package manager
-        id: pm
-        run: |
-          if [ -f pnpm-lock.yaml ]; then
-            echo "pm=pnpm" >> "$GITHUB_OUTPUT"
-          elif [ -f bun.lock ] || [ -f bun.lockb ]; then
-            echo "pm=bun" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - uses: pnpm/action-setup@v4
-        if: steps.pm.outputs.pm == 'pnpm'
-        with:
-          run_install: false
-
-      - name: Install dependencies (pnpm)
-        if: steps.pm.outputs.pm == 'pnpm'
-        run: pnpm install --frozen-lockfile
-
-      - name: Install dependencies (bun)
-        if: steps.pm.outputs.pm == 'bun'
-        run: bun install --frozen-lockfile
-
-      - name: Lint (ESLint)
-        run: npx eslint .
+  if [ "$lang" = "mixed" ]; then
+    cat <<'YAML'
 
       - uses: actions/setup-go@v5
         with:
@@ -723,9 +746,68 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+YAML
+  fi
+}
+
+# install_workflow_file <repo_root> <lang> <pm>
+# Generates harness-checks.yml for the given lang+pm, writes it to
+# .github/workflows/harness-checks.yml only when the content has changed
+# (delta update via harness-manifest.json checksum).
+install_workflow_file() {
+  local repo_root="$1" lang="$2" pm="$3"
+  local rel_path=".github/workflows/harness-checks.yml"
+  local dest="$repo_root/$rel_path"
+  local manifest="$repo_root/.github/harness-manifest.json"
+  local content tmp current_checksum installed_checksum
+
+  content=$(generate_workflow_yaml "$lang" "$pm")
+
+  tmp=$(mktemp)
+  printf '%s\n' "$content" > "$tmp"
+  current_checksum=$(_sha256 "$tmp") || { rm -f "$tmp"; return 1; }
+  rm -f "$tmp"
+
+  installed_checksum=$(_read_manifest_checksum "$manifest" "$rel_path")
+
+  if [ "$current_checksum" = "$installed_checksum" ] && [ -f "$dest" ]; then
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+  printf '%s\n' "$content" > "$dest"
+  _write_manifest_entry "$manifest" "$rel_path" "$current_checksum"
+  echo "Installed $rel_path"
+}
+
+# detect_overlapping_workflows <repo_root>
+# Warns if any existing non-harness workflow contains keywords harness will own.
+detect_overlapping_workflows() {
+  local repo_root="$1"
+  local workflows_dir="$repo_root/.github/workflows"
+  [ -d "$workflows_dir" ] || return 0
+
+  for wf in "$workflows_dir"/*.yml "$workflows_dir"/*.yaml; do
+    [ -f "$wf" ] || continue
+    case "$(basename "$wf")" in harness-checks.yml) continue ;; esac
+    if grep -qiE 'eslint|prettier|tsc|golangci.lint|gitleaks' "$wf" 2>/dev/null; then
+      echo "WARNING: $(basename "$wf") contains checks that harness will own."
+      echo "  To migrate: remove those steps from $(basename "$wf") and re-run setup."
+      echo "  harness-checks.yml will run the same checks automatically."
+    fi
+  done
+}
 ```
 
-- [ ] **Step 9: Run the full test suite to confirm no regressions**
+- [ ] **Step 5: Run ci-workflows.bats to verify all tests pass**
+
+```bash
+bats tests/harness/ci-workflows.bats
+```
+
+Expected: all tests PASS.
+
+- [ ] **Step 6: Run the full test suite to confirm no regressions**
 
 ```bash
 bats tests/harness/
@@ -733,12 +815,11 @@ bats tests/harness/
 
 Expected: all tests PASS.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add harness/lib/ci-workflows.sh tests/harness/ci-workflows.bats \
-        harness/workflows/harness-checks-js.yml harness/workflows/harness-checks-mixed.yml
-git commit -m "feat: add per-type CI workflow templates and extend install_workflow_file with template selection"
+git add harness/lib/ci-workflows.sh
+git commit -m "feat: generate workflow YAML on the fly from lang and PM"
 ```
 
 ---
@@ -803,7 +884,7 @@ Add these tests at the end of the file:
   _pnpm_repo_with_hooks
   run bash "$SETUP_SCRIPT" "$REPO_DIR"
   [ "$status" -eq 0 ]
-  grep -q "golangci-lint-action" "$REPO_DIR/.github/workflows/harness-checks.yml" && return 1
+  ! grep -q "golangci-lint-action" "$REPO_DIR/.github/workflows/harness-checks.yml"
   grep -q "npx eslint" "$REPO_DIR/.github/workflows/harness-checks.yml"
 }
 
@@ -864,6 +945,7 @@ REPO_LANG=$(detect_language "$REPO_ROOT")
 
 case "$REPO_LANG" in
   js|mixed)
+    REPO_PM=$(detect_package_manager "$REPO_ROOT")
     echo "Detected $REPO_LANG repo — setting up Husky hooks..."
     ensure_husky_installed "$REPO_ROOT"
     ensure_husky_init "$REPO_ROOT"
@@ -881,7 +963,7 @@ case "$REPO_LANG" in
       install_golangci_hook "$REPO_ROOT"
     fi
     detect_overlapping_workflows "$REPO_ROOT"
-    install_workflow_file "$REPO_ROOT" "$SCRIPT_DIR" "harness-checks-${REPO_LANG}.yml"
+    install_workflow_file "$REPO_ROOT" "$REPO_LANG" "$REPO_PM"
     echo "Done. Husky hooks configured at $REPO_ROOT/.husky/"
     echo "NOTE: Add 'harness / checks' as a required status check in GitHub branch protection to enforce CI linting on PRs."
     ;;
@@ -904,7 +986,7 @@ Expected: all tests PASS including the ten new ones.
 
 ```bash
 git add harness/setup.sh tests/harness/setup.bats
-git commit -m "feat: wire lint setup into setup.sh and select per-type workflow template"
+git commit -m "feat: wire lint setup into setup.sh and pass lang+pm to install_workflow_file"
 ```
 
 ---
@@ -960,9 +1042,23 @@ gh api repos/{owner}/{repo}/branches/main/protection \
 ```
 ```
 
-- [ ] **Step 2: Update the `## Directory structure` section**
+- [ ] **Step 2: Update the `## CI workflow scaffolding` prose**
 
 Replace:
+
+```markdown
+Setup installs a dedicated GitHub Actions workflow into the target repo:
+```
+
+With:
+
+```markdown
+Setup generates and installs a dedicated GitHub Actions workflow into the target repo. The workflow is crafted on the fly for the detected repo type (JS/TS or mixed) and package manager (pnpm or bun) — no runtime detection in CI:
+```
+
+- [ ] **Step 3: Update the `## Directory structure` section**
+
+Replace the existing `ci-workflows.sh` and `workflows/` lines:
 
 ```
     ci-workflows.sh             # install_workflow_file, detect_overlapping_workflows
@@ -973,15 +1069,11 @@ Replace:
 With:
 
 ```
-    ci-workflows.sh             # install_workflow_file, detect_overlapping_workflows
+    ci-workflows.sh             # generate_workflow_yaml, install_workflow_file, detect_overlapping_workflows
     lint.sh                     # ensure_eslint_installed, ensure_golangci_lint_available, install_lint_staged_hook, install_golangci_hook
-  workflows/
-    harness-checks.yml          # base template (test fixture)
-    harness-checks-js.yml       # installed for JS/TS repos
-    harness-checks-mixed.yml    # installed for Go+JS/TS repos
 ```
 
-- [ ] **Step 3: Run all tests to confirm nothing broke**
+- [ ] **Step 4: Run all tests to confirm nothing broke**
 
 ```bash
 bats tests/harness/
@@ -989,11 +1081,11 @@ bats tests/harness/
 
 Expected: all tests PASS.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add harness/README.md
-git commit -m "docs: document linting setup, per-type workflow templates, and required status check"
+git commit -m "docs: document linting setup, generated CI workflow, and required status check"
 ```
 
 ---
@@ -1009,7 +1101,10 @@ git commit -m "docs: document linting setup, per-type workflow templates, and re
 | Husky pre-commit runs ESLint via lint-staged on staged JS/TS files only | Task 3 (`install_lint_staged_hook` + `.lintstagedrc.json` targeting `*.{js,jsx,ts,tsx}`) |
 | For mixed repos: pre-commit also runs golangci-lint on staged Go files only | Task 3 (`install_golangci_hook` — block guards with `_STAGED_GO` check) |
 | Lint failure exits non-zero and outputs which files failed | Inherent to lint-staged and golangci-lint; hook exits non-zero on tool failure |
-| CI workflow runs ESLint (and golangci-lint for mixed) on every PR | Task 4 (`harness-checks-js.yml` and `harness-checks-mixed.yml`); setup selects the right one |
+| CI workflow runs ESLint (and golangci-lint for mixed) on every PR | Task 4 (`generate_workflow_yaml` produces lang- and pm-specific YAML); Task 5 wires it in |
+| No runtime PM or language detection in installed CI workflow | Task 4 (`generate_workflow_yaml` bakes PM and lang in at install time) |
+| pnpm repos get pnpm-only steps in CI | Task 4 (`pnpm` case in `generate_workflow_yaml`) |
+| bun repos get bun-only steps in CI | Task 4 (`bun` case in `generate_workflow_yaml`) |
 | CI lint check configured as required status check | Task 6 (README documents `gh api` command and GitHub Settings path; not automated — requires admin access) |
 | If lint tools missing at hook runtime, hook fails with actionable error | Task 3: lint block checks `command -v node`; golangci block checks `command -v golangci-lint` |
 
@@ -1019,8 +1114,10 @@ No TBD or TODO entries. All steps include exact code.
 
 ### Type consistency
 
-- `install_workflow_file` new signature: `<repo_root> <harness_dir> [template_name]` — existing 2-arg callers in ci-workflows.bats default to `harness-checks.yml`; setup.sh uses explicit 3rd arg
+- `generate_workflow_yaml <lang> <pm>` — called inside `install_workflow_file` and directly in tests
+- `install_workflow_file <repo_root> <lang> <pm>` — called in `setup.sh` as `install_workflow_file "$REPO_ROOT" "$REPO_LANG" "$REPO_PM"`
+- `$REPO_PM` is set from `detect_package_manager "$REPO_ROOT"` inside the `js|mixed` case block — same function used internally by `ensure_eslint_installed` etc.
+- Checksum written as `printf '%s\n' "$content" > "$tmp"` in `install_workflow_file`, and replicated as `printf '%s\n' "$(generate_workflow_yaml ...)" > "$tmp"` in the test — identical content → identical checksum
 - `merge_block` called with 4 args in setup.sh and 3 args in lint.sh — both match `merge_block <file> <id> <content> [position]`
 - `ensure_golangci_lint_available` takes no `repo_root` arg (PATH check only) — consistent across lint.sh and setup.sh
 - Hook block IDs `lint` and `golangci` — no conflicts with existing `nvm` block ID
-- Template names `harness-checks-js.yml` / `harness-checks-mixed.yml` match `"harness-checks-${REPO_LANG}.yml"` for `REPO_LANG` values `js` and `mixed`
