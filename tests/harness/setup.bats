@@ -99,3 +99,25 @@ _bun_repo_with_hooks() {
   bash "$SETUP_SCRIPT" "$REPO_DIR"
   grep -q "# team custom rule" "$REPO_DIR/.husky/pre-commit"
 }
+
+@test "installs .github/workflows/harness-checks.yml into target repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.github/workflows/harness-checks.yml" ]
+}
+
+@test "creates .github/harness-manifest.json in target repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.github/harness-manifest.json" ]
+}
+
+@test "re-run does not print Installed when workflow is unchanged" {
+  _pnpm_repo_with_hooks
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Installed"* ]]
+}

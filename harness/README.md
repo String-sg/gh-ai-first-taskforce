@@ -50,6 +50,31 @@ Each harness rule is wrapped in sentinel comments:
 - Existing team hooks are preserved
 - Future stories (#9–#12) append their own sentinel blocks using the same mechanism
 
+## CI workflow scaffolding
+
+Setup installs a dedicated GitHub Actions workflow into the target repo:
+
+```
+.github/
+  workflows/
+    harness-checks.yml   # owned by harness — do not edit manually
+  harness-manifest.json  # lockfile — tracks installed checksums
+```
+
+`harness-checks.yml` is installed on first run and updated only when the harness template changes (delta update via `harness-manifest.json`). Re-running setup is always safe.
+
+### Overlap detection
+
+If any existing workflow in `.github/workflows/` contains checks that harness will own (ESLint, Prettier, tsc, golangci-lint, or gitleaks), setup prints a warning with migration guidance:
+
+```
+WARNING: ci.yml contains checks that harness will own.
+  To migrate: remove those steps from ci.yml and re-run setup.
+  harness-checks.yml will run the same checks automatically.
+```
+
+Harness never modifies team-owned workflow files.
+
 ## Directory structure
 
 ```
@@ -60,6 +85,9 @@ harness/
     detect-package-manager.sh   # detect_package_manager <dir>
     merge-hook.sh               # merge_block, ensure_hook_exists
     husky.sh                    # ensure_husky_installed, ensure_husky_init
+    ci-workflows.sh             # install_workflow_file, detect_overlapping_workflows
+  workflows/
+    harness-checks.yml          # CI workflow template — installed into target repos
 ```
 
 ## Running tests

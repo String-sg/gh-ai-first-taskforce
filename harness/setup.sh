@@ -8,6 +8,7 @@ REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 . "$SCRIPT_DIR/lib/detect-package-manager.sh"
 . "$SCRIPT_DIR/lib/merge-hook.sh"
 . "$SCRIPT_DIR/lib/husky.sh"
+. "$SCRIPT_DIR/lib/ci-workflows.sh"
 
 NVM_BLOCK='# harness:nvm:begin
 export NVM_DIR="$HOME/.nvm"
@@ -24,6 +25,8 @@ case "$REPO_LANG" in
     ensure_hook_exists "$REPO_ROOT/.husky/pre-push"
     merge_block "$REPO_ROOT/.husky/pre-commit" "nvm" "$NVM_BLOCK" "after-shebang"
     merge_block "$REPO_ROOT/.husky/pre-push" "nvm" "$NVM_BLOCK" "after-shebang"
+    detect_overlapping_workflows "$REPO_ROOT"
+    install_workflow_file "$REPO_ROOT" "$SCRIPT_DIR"
     echo "Done. Husky hooks configured at $REPO_ROOT/.husky/"
     ;;
   unsupported)
