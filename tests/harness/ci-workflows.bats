@@ -83,19 +83,19 @@ teardown() {
 
 @test "install_workflow_file: creates .github/workflows/harness-checks.yml on first run" {
   local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir"
+  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
   [ -f "$REPO_DIR/.github/workflows/harness-checks.yml" ]
 }
 
 @test "install_workflow_file: creates .github/harness-manifest.json on first run" {
   local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir"
+  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
   [ -f "$REPO_DIR/.github/harness-manifest.json" ]
 }
 
 @test "install_workflow_file: manifest checksum matches template" {
   local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir"
+  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
   local expected
   expected=$(_sha256 "$harness_dir/workflows/harness-checks.yml")
   run _read_manifest_checksum "$REPO_DIR/.github/harness-manifest.json" \
@@ -105,21 +105,29 @@ teardown() {
 
 @test "install_workflow_file: is silent on re-run with unchanged template" {
   local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir"
-  run install_workflow_file "$REPO_DIR" "$harness_dir"
+  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
+  run install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
 
 @test "install_workflow_file: prints Installed and updates manifest when checksum is stale" {
   local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir"
+  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
   _write_manifest_entry "$REPO_DIR/.github/harness-manifest.json" \
     ".github/workflows/harness-checks.yml" \
     "0000000000000000000000000000000000000000000000000000000000000000"
-  run install_workflow_file "$REPO_DIR" "$harness_dir"
+  run install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Installed"* ]]
+}
+
+@test "install_workflow_file: installs the specified template when template_name given" {
+  local tmp_harness="$REPO_DIR/tmp-harness"
+  mkdir -p "$tmp_harness/workflows"
+  printf 'name: Custom Checks\n' > "$tmp_harness/workflows/custom-checks.yml"
+  install_workflow_file "$REPO_DIR" "$tmp_harness" "custom-checks.yml"
+  grep -q "name: Custom Checks" "$REPO_DIR/.github/workflows/harness-checks.yml"
 }
 
 # ── detect_overlapping_workflows ─────────────────────────────────────────

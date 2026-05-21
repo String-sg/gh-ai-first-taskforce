@@ -25,12 +25,13 @@ _write_manifest_entry() {
     "$path" "$checksum" > "$manifest_file"
 }
 
-# install_workflow_file <repo_root> <harness_dir>
-# Copies harness/workflows/harness-checks.yml into .github/workflows/ if the
+# install_workflow_file <repo_root> <harness_dir> [template_name]
+# Copies harness/workflows/<template_name> into .github/workflows/ if the
 # template checksum differs from the manifest entry (delta update).
+# Defaults to harness-checks.yml if template_name is not provided.
 install_workflow_file() {
-  local repo_root="$1" harness_dir="$2"
-  local template="$harness_dir/workflows/harness-checks.yml"
+  local repo_root="$1" harness_dir="$2" template_name="${3:-harness-checks.yml}"
+  local template="$harness_dir/workflows/$template_name"
   local rel_path=".github/workflows/harness-checks.yml"
   local dest="$repo_root/$rel_path"
   local manifest="$repo_root/.github/harness-manifest.json"
