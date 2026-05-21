@@ -75,6 +75,46 @@ WARNING: ci.yml contains checks that harness will own.
 
 Harness never modifies team-owned workflow files.
 
+## Linting
+
+Setup installs linting tools and default configs if absent, then merges lint hooks into `.husky/pre-commit`.
+
+### JS / TS repos
+
+- Installs `eslint` and `lint-staged` as dev dependencies (if not already present)
+- Writes a default `.eslintrc.json` (extends `eslint:recommended`) if no ESLint config file exists
+- Writes a default `.lintstagedrc.json` targeting `*.{js,jsx,ts,tsx}` files if no lint-staged config exists
+- Merges a `harness:lint` pre-commit block that runs `npx lint-staged` on staged files
+
+### Mixed (Go + JS/TS) repos
+
+All of the above, plus:
+
+- Checks for `golangci-lint` in PATH; installs via `go install` if absent
+- Writes a default `.golangci.yml` (enables errcheck, gosimple, govet, ineffassign, staticcheck, unused) if none exists
+- Merges a `harness:golangci` pre-commit block that runs `golangci-lint run ./...` when staged `.go` files are present
+
+Lint failure exits non-zero and outputs which files failed — the commit is blocked.
+
+### Required status check
+
+The CI workflow job is named `harness / checks`. To enforce linting on PRs, configure it as a required status check in GitHub repository settings:
+
+```
+Settings → Branches → Branch protection rules → Require status checks to pass → harness / checks
+```
+
+Or via the GitHub CLI (requires repo admin):
+
+```sh
+gh api repos/{owner}/{repo}/branches/main/protection \
+  --method PUT \
+  --field required_status_checks='{"strict":true,"contexts":["harness / checks"]}' \
+  --field enforce_admins=false \
+  --field required_pull_request_reviews=null \
+  --field restrictions=null
+```
+
 ## Directory structure
 
 ```
@@ -86,8 +126,11 @@ harness/
     merge-hook.sh               # merge_block, ensure_hook_exists
     husky.sh                    # ensure_husky_installed, ensure_husky_init
     ci-workflows.sh             # install_workflow_file, detect_overlapping_workflows
+    lint.sh                     # ensure_eslint_installed, ensure_golangci_lint_available, install_lint_staged_hook, install_golangci_hook
   workflows/
-    harness-checks.yml          # CI workflow template — installed into target repos
+    harness-checks.yml          # base template (test fixture)
+    harness-checks-js.yml       # installed for JS/TS repos
+    harness-checks-mixed.yml    # installed for Go+JS/TS repos
 ```
 
 ## Running tests
