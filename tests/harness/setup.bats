@@ -171,7 +171,7 @@ _bun_repo_with_hooks() {
   _pnpm_repo_with_hooks
   run bash "$SETUP_SCRIPT" "$REPO_DIR"
   [ "$status" -eq 0 ]
-  grep -q "golangci-lint-action" "$REPO_DIR/.github/workflows/harness-checks.yml" && return 1
+  ! grep -q "golangci-lint-action" "$REPO_DIR/.github/workflows/harness-checks.yml"
   grep -q "npx eslint" "$REPO_DIR/.github/workflows/harness-checks.yml"
 }
 
