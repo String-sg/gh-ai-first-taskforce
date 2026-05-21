@@ -79,55 +79,83 @@ teardown() {
   [ "$output" = "bbb111bbb111bbb111bbb111bbb111bbb111bbb111bbb111bbb111bbb111bbb1" ]
 }
 
+# ── generate_workflow_yaml ───────────────────────────────────────────────
+
+@test "generate_workflow_yaml js pnpm: contains pnpm install, not bun or go steps" {
+  run generate_workflow_yaml "js" "pnpm"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pnpm install --frozen-lockfile"* ]]
+  [[ "$output" != *"bun install"* ]]
+  [[ "$output" != *"golangci-lint-action"* ]]
+}
+
+@test "generate_workflow_yaml js bun: contains bun install, not pnpm or go steps" {
+  run generate_workflow_yaml "js" "bun"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"bun install --frozen-lockfile"* ]]
+  [[ "$output" != *"pnpm install"* ]]
+  [[ "$output" != *"golangci-lint-action"* ]]
+}
+
+@test "generate_workflow_yaml mixed pnpm: contains pnpm install and golangci steps" {
+  run generate_workflow_yaml "mixed" "pnpm"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pnpm install --frozen-lockfile"* ]]
+  [[ "$output" == *"golangci-lint-action@v6"* ]]
+}
+
+@test "generate_workflow_yaml mixed bun: contains bun install and golangci steps" {
+  run generate_workflow_yaml "mixed" "bun"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"bun install --frozen-lockfile"* ]]
+  [[ "$output" == *"golangci-lint-action@v6"* ]]
+}
+
 # ── install_workflow_file ────────────────────────────────────────────────
 
 @test "install_workflow_file: creates .github/workflows/harness-checks.yml on first run" {
-  local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
   [ -f "$REPO_DIR/.github/workflows/harness-checks.yml" ]
 }
 
 @test "install_workflow_file: creates .github/harness-manifest.json on first run" {
-  local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
   [ -f "$REPO_DIR/.github/harness-manifest.json" ]
 }
 
-@test "install_workflow_file: manifest checksum matches template" {
-  local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
-  local expected
-  expected=$(_sha256 "$harness_dir/workflows/harness-checks.yml")
+@test "install_workflow_file: manifest checksum matches generated content" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  local expected tmp
+  tmp=$(mktemp)
+  printf '%s\n' "$(generate_workflow_yaml "js" "pnpm")" > "$tmp"
+  expected=$(_sha256 "$tmp")
+  rm -f "$tmp"
   run _read_manifest_checksum "$REPO_DIR/.github/harness-manifest.json" \
     ".github/workflows/harness-checks.yml"
   [ "$output" = "$expected" ]
 }
 
-@test "install_workflow_file: is silent on re-run with unchanged template" {
-  local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
-  run install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
+@test "install_workflow_file: is silent on re-run with unchanged lang and pm" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  run install_workflow_file "$REPO_DIR" "js" "pnpm"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
 
-@test "install_workflow_file: prints Installed and updates manifest when checksum is stale" {
-  local harness_dir="$BATS_TEST_DIRNAME/../../harness"
-  install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
+@test "install_workflow_file: prints Installed and updates when checksum is stale" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
   _write_manifest_entry "$REPO_DIR/.github/harness-manifest.json" \
     ".github/workflows/harness-checks.yml" \
     "0000000000000000000000000000000000000000000000000000000000000000"
-  run install_workflow_file "$REPO_DIR" "$harness_dir" "harness-checks.yml"
+  run install_workflow_file "$REPO_DIR" "js" "pnpm"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Installed"* ]]
 }
 
-@test "install_workflow_file: installs the specified template when template_name given" {
-  local tmp_harness="$REPO_DIR/tmp-harness"
-  mkdir -p "$tmp_harness/workflows"
-  printf 'name: Custom Checks\n' > "$tmp_harness/workflows/custom-checks.yml"
-  install_workflow_file "$REPO_DIR" "$tmp_harness" "custom-checks.yml"
-  grep -q "name: Custom Checks" "$REPO_DIR/.github/workflows/harness-checks.yml"
+@test "install_workflow_file: installs pnpm-specific content for pnpm repo" {
+  install_workflow_file "$REPO_DIR" "js" "pnpm"
+  grep -q "pnpm install --frozen-lockfile" "$REPO_DIR/.github/workflows/harness-checks.yml"
+  ! grep -q "bun install" "$REPO_DIR/.github/workflows/harness-checks.yml"
 }
 
 # ── detect_overlapping_workflows ─────────────────────────────────────────
