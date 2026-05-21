@@ -121,3 +121,79 @@ _bun_repo_with_hooks() {
   [ "$status" -eq 0 ]
   [[ "$output" != *"Installed"* ]]
 }
+
+@test "merges lint block into pre-commit for JS repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:lint:begin" "$REPO_DIR/.husky/pre-commit"
+}
+
+@test "creates .eslintrc.json for JS repo when absent" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.eslintrc.json" ]
+}
+
+@test "creates .lintstagedrc.json for JS repo when absent" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.lintstagedrc.json" ]
+}
+
+@test "does not merge golangci block for JS-only repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  run grep "# harness:golangci:begin" "$REPO_DIR/.husky/pre-commit"
+  [ "$status" -ne 0 ]
+}
+
+@test "merges golangci block into pre-commit for mixed repo" {
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:golangci:begin" "$REPO_DIR/.husky/pre-commit"
+}
+
+@test "creates .golangci.yml for mixed repo when absent" {
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.golangci.yml" ]
+}
+
+@test "installs js workflow template for JS repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "golangci-lint-action" "$REPO_DIR/.github/workflows/harness-checks.yml" && return 1
+  grep -q "npx eslint" "$REPO_DIR/.github/workflows/harness-checks.yml"
+}
+
+@test "installs mixed workflow template for mixed repo" {
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "golangci-lint-action" "$REPO_DIR/.github/workflows/harness-checks.yml"
+}
+
+@test "re-run does not duplicate lint block in pre-commit" {
+  _pnpm_repo_with_hooks
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$(grep -c "harness:lint:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
+}
+
+@test "re-run does not duplicate golangci block for mixed repo" {
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$(grep -c "harness:golangci:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
+}
