@@ -52,7 +52,7 @@ Each harness rule is wrapped in sentinel comments:
 
 ## CI workflow scaffolding
 
-Setup installs a dedicated GitHub Actions workflow into the target repo:
+Setup generates and installs a dedicated GitHub Actions workflow into the target repo. The workflow is crafted on the fly for the detected repo type (JS/TS or mixed) and package manager (pnpm or bun) — no runtime detection in CI:
 
 ```
 .github/
@@ -125,12 +125,8 @@ harness/
     detect-package-manager.sh   # detect_package_manager <dir>
     merge-hook.sh               # merge_block, ensure_hook_exists
     husky.sh                    # ensure_husky_installed, ensure_husky_init
-    ci-workflows.sh             # install_workflow_file, detect_overlapping_workflows
+    ci-workflows.sh             # generate_workflow_yaml, install_workflow_file, detect_overlapping_workflows
     lint.sh                     # ensure_eslint_installed, ensure_golangci_lint_available, install_lint_staged_hook, install_golangci_hook
-  workflows/
-    harness-checks.yml          # base template (test fixture)
-    harness-checks-js.yml       # installed for JS/TS repos
-    harness-checks-mixed.yml    # installed for Go+JS/TS repos
 ```
 
 ## Running tests
