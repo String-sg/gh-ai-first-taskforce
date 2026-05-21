@@ -17,10 +17,10 @@ export NVM_DIR="$HOME/.nvm"
 # harness:nvm:end'
 
 REPO_LANG=$(detect_language "$REPO_ROOT")
-REPO_PM=$(detect_package_manager "$REPO_ROOT")
 
 case "$REPO_LANG" in
   js|mixed)
+    REPO_PM=$(detect_package_manager "$REPO_ROOT")
     echo "Detected $REPO_LANG repo — setting up Husky hooks..."
     ensure_husky_installed "$REPO_ROOT"
     ensure_husky_init "$REPO_ROOT"

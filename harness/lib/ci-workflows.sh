@@ -108,7 +108,7 @@ install_workflow_file() {
 
   tmp=$(mktemp)
   printf '%s\n' "$content" > "$tmp"
-  current_checksum=$(_sha256 "$tmp")
+  current_checksum=$(_sha256 "$tmp") || { rm -f "$tmp"; return 1; }
   rm -f "$tmp"
 
   installed_checksum=$(_read_manifest_checksum "$manifest" "$rel_path")
