@@ -128,19 +128,19 @@ EOF
 
 install_lint_staged_hook() {
   local repo_root="$1"
-  local LINT_BLOCK='# harness:lint:begin
+  local lint_block='# harness:lint:begin
 if ! command -v node >/dev/null 2>&1; then
   echo "ERROR: node not found. Ensure nvm is configured and re-run: gh ai-first-taskforce setup" >&2
   exit 1
 fi
 npx lint-staged
 # harness:lint:end'
-  merge_block "$repo_root/.husky/pre-commit" "lint" "$LINT_BLOCK" "append"
+  merge_block "$repo_root/.husky/pre-commit" "lint" "$lint_block" "append"
 }
 
 install_golangci_hook() {
   local repo_root="$1"
-  local GOLANGCI_BLOCK='# harness:golangci:begin
+  local golangci_block='# harness:golangci:begin
 _STAGED_GO=$(git diff --cached --name-only --diff-filter=ACM | grep '"'"'\.go'"'"' || true)
 if [ -n "$_STAGED_GO" ]; then
   if ! command -v golangci-lint >/dev/null 2>&1; then
@@ -151,5 +151,5 @@ if [ -n "$_STAGED_GO" ]; then
 fi
 unset _STAGED_GO
 # harness:golangci:end'
-  merge_block "$repo_root/.husky/pre-commit" "golangci" "$GOLANGCI_BLOCK" "append"
+  merge_block "$repo_root/.husky/pre-commit" "golangci" "$golangci_block" "append"
 }
