@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "mock-go $*" >> "${MOCK_LOG:-/tmp/mock-calls.log}"
+exit 0
