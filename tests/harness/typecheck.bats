@@ -94,6 +94,14 @@ teardown() {
   grep -q '"web"' "$REPO_DIR/tsconfig.json"
 }
 
+@test "ensure_tsconfig: include uses src when both src and web dirs exist" {
+  printf '{"devDependencies":{}}\n' > "$REPO_DIR/package.json"
+  mkdir "$REPO_DIR/src"
+  mkdir "$REPO_DIR/web"
+  ensure_tsconfig "$REPO_DIR"
+  grep -q '"include": \["src"\]' "$REPO_DIR/tsconfig.json"
+}
+
 @test "ensure_tsconfig: include uses app when app dir exists and src/web absent" {
   printf '{"devDependencies":{}}\n' > "$REPO_DIR/package.json"
   mkdir "$REPO_DIR/app"

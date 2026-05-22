@@ -34,11 +34,9 @@ ensure_tsconfig() {
 
   # Detect source directory
   local src_dir="src"
-  if [ -d "$repo_root/web" ]; then
-    src_dir="web"
-  elif [ -d "$repo_root/app" ]; then
-    src_dir="app"
-  fi
+  for candidate in src web app; do
+    [ -d "$repo_root/$candidate" ] && src_dir="$candidate" && break
+  done
 
   # Detect Vite
   local has_vite=0
