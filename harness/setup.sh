@@ -13,11 +13,15 @@ REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 . "$SCRIPT_DIR/lib/format.sh"
 . "$SCRIPT_DIR/lib/typecheck.sh"
 . "$SCRIPT_DIR/lib/secrets.sh"
+. "$SCRIPT_DIR/lib/ai-review.sh"
 
 NVM_BLOCK='# harness:nvm:begin
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 # harness:nvm:end'
+
+AI_MODEL=$(parse_harness_config "$REPO_ROOT" "ai_review.model")
+AI_KEY_VAR=$(parse_harness_config "$REPO_ROOT" "ai_review.api_key_secret")
 
 REPO_LANG=$(detect_language "$REPO_ROOT")
 ensure_gitleaks_available
@@ -56,6 +60,9 @@ case "$REPO_LANG" in
     install_gitleaks_hook "$REPO_ROOT"
     detect_overlapping_workflows "$REPO_ROOT"
     install_workflow_file "$REPO_ROOT" "$REPO_LANG" "$REPO_PM"
+    install_ai_review_hook "$REPO_ROOT" \
+      "${AI_MODEL:-claude-sonnet-4-6}" \
+      "${AI_KEY_VAR:-ANTHROPIC_API_KEY}"
     echo "Done. Husky hooks configured at $REPO_ROOT/.husky/"
     echo "NOTE: Add 'harness / checks' as a required status check in GitHub branch protection to enforce CI linting on PRs."
     ;;

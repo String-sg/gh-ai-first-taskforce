@@ -391,3 +391,19 @@ _bun_repo_with_hooks() {
   bash "$SETUP_SCRIPT" "$REPO_DIR"
   [ "$(grep -c "harness:gitleaks:begin" "$REPO_DIR/.git/hooks/pre-commit")" = "1" ]
 }
+
+# ── ai-review hook ───────────────────────────────────────────────────────
+
+@test "setup: merges ai-review block into .husky/pre-push for JS repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:ai-review:begin" "$REPO_DIR/.husky/pre-push"
+}
+
+@test "setup: re-run does not duplicate ai-review block in pre-push" {
+  _pnpm_repo_with_hooks
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$(grep -c 'harness:ai-review:begin' "$REPO_DIR/.husky/pre-push")" = "1" ]
+}
