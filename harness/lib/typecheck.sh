@@ -34,26 +34,19 @@ ensure_tsconfig() {
 
   # Detect source directory
   local src_dir="src"
-  if [ -d "$repo_root/src" ]; then
-    src_dir="src"
-  elif [ -d "$repo_root/web" ]; then
+  if [ -d "$repo_root/web" ]; then
     src_dir="web"
   elif [ -d "$repo_root/app" ]; then
     src_dir="app"
   fi
 
   # Detect Vite
-  local vite_types=""
-  if grep -q '"vite"' "$repo_root/package.json" 2>/dev/null; then
-    vite_types='      "types": ["vite/client"],
-'
-  fi
+  local has_vite=0
+  grep -q '"vite"' "$repo_root/package.json" 2>/dev/null && has_vite=1
 
   printf '{\n  "compilerOptions": {\n    "target": "ES2022",\n    "useDefineForClassFields": true,\n    "lib": ["ES2022", "DOM", "DOM.Iterable"],\n    "module": "ESNext",\n' \
     > "$repo_root/tsconfig.json"
-  if [ -n "$vite_types" ]; then
-    printf '    "types": ["vite/client"],\n' >> "$repo_root/tsconfig.json"
-  fi
+  [ "$has_vite" = "1" ] && printf '    "types": ["vite/client"],\n' >> "$repo_root/tsconfig.json"
   printf '    "skipLibCheck": true,\n\n    "moduleResolution": "bundler",\n    "allowImportingTsExtensions": true,\n    "verbatimModuleSyntax": true,\n    "moduleDetection": "force",\n    "noEmit": true,\n    "jsx": "react-jsx",\n\n    "strict": true,\n    "noUnusedLocals": true,\n    "noUnusedParameters": true,\n    "erasableSyntaxOnly": true,\n    "noFallthroughCasesInSwitch": true,\n    "noUncheckedSideEffectImports": true\n  },\n  "include": ["%s"]\n}\n' \
     "$src_dir" >> "$repo_root/tsconfig.json"
 
