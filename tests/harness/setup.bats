@@ -30,11 +30,12 @@ _bun_repo_with_hooks() {
   chmod +x "$REPO_DIR/.husky/pre-commit" "$REPO_DIR/.husky/pre-push"
 }
 
-@test "exits 1 with clear message for pure Go repo" {
+@test "exits 0 for pure Go repo with go.mod (gitleaks-only path)" {
+  mkdir -p "$REPO_DIR/.git"
   touch "$REPO_DIR/go.mod"
   run bash "$SETUP_SCRIPT" "$REPO_DIR"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"not supported"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Pure Go repo"* ]]
 }
 
 @test "exits 1 with clear message for unsupported package manager" {
@@ -304,4 +305,89 @@ _bun_repo_with_hooks() {
   bash "$SETUP_SCRIPT" "$REPO_DIR"
   bash "$SETUP_SCRIPT" "$REPO_DIR"
   [ "$(grep -c "harness:govet:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
+}
+
+# ── gitleaks integration ──────────────────────────────────────────────────────
+
+@test "creates .gitleaks.toml for JS repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.gitleaks.toml" ]
+}
+
+@test "creates .gitleaks.toml for mixed repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.gitleaks.toml" ]
+}
+
+@test "creates .gitleaks.toml for pure Go repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  mkdir -p "$REPO_DIR/.git"
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/.gitleaks.toml" ]
+}
+
+@test "merges gitleaks block into .husky/pre-commit for JS repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:gitleaks:begin" "$REPO_DIR/.husky/pre-commit"
+}
+
+@test "merges gitleaks block into .husky/pre-commit for mixed repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:gitleaks:begin" "$REPO_DIR/.husky/pre-commit"
+}
+
+@test "merges gitleaks block into .git/hooks/pre-commit for pure Go repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  mkdir -p "$REPO_DIR/.git"
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:gitleaks:begin" "$REPO_DIR/.git/hooks/pre-commit"
+}
+
+@test "pure Go repo setup exits 0 when go.mod present" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  mkdir -p "$REPO_DIR/.git"
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+}
+
+@test "setup still exits 1 for repo with no package.json and no go.mod" {
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not supported"* ]]
+}
+
+@test "re-run does not duplicate gitleaks block in .husky/pre-commit for JS repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  _pnpm_repo_with_hooks
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$(grep -c "harness:gitleaks:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
+}
+
+@test "re-run does not duplicate gitleaks block in .git/hooks/pre-commit for pure Go repo" {
+  export PATH="$BATS_TEST_DIRNAME/../mocks:$PATH"
+  mkdir -p "$REPO_DIR/.git"
+  touch "$REPO_DIR/go.mod"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$(grep -c "harness:gitleaks:begin" "$REPO_DIR/.git/hooks/pre-commit")" = "1" ]
 }

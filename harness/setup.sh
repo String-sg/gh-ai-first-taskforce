@@ -12,6 +12,7 @@ REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 . "$SCRIPT_DIR/lib/lint.sh"
 . "$SCRIPT_DIR/lib/format.sh"
 . "$SCRIPT_DIR/lib/typecheck.sh"
+. "$SCRIPT_DIR/lib/secrets.sh"
 
 NVM_BLOCK='# harness:nvm:begin
 export NVM_DIR="$HOME/.nvm"
@@ -19,6 +20,8 @@ export NVM_DIR="$HOME/.nvm"
 # harness:nvm:end'
 
 REPO_LANG=$(detect_language "$REPO_ROOT")
+ensure_gitleaks_available
+ensure_gitleaks_config "$REPO_ROOT"
 
 case "$REPO_LANG" in
   js|mixed)
@@ -50,13 +53,20 @@ case "$REPO_LANG" in
       ensure_go_vet_available
       install_go_vet_hook "$REPO_ROOT"
     fi
+    install_gitleaks_hook "$REPO_ROOT"
     detect_overlapping_workflows "$REPO_ROOT"
     install_workflow_file "$REPO_ROOT" "$REPO_LANG" "$REPO_PM"
     echo "Done. Husky hooks configured at $REPO_ROOT/.husky/"
     echo "NOTE: Add 'harness / checks' as a required status check in GitHub branch protection to enforce CI linting on PRs."
     ;;
   unsupported)
-    echo "ERROR: No package.json found. Pure Go repos are not supported in v1." >&2
-    exit 1
+    if [ -f "$REPO_ROOT/go.mod" ]; then
+      install_gitleaks_git_hook "$REPO_ROOT"
+      echo "Done. gitleaks pre-commit hook installed at $REPO_ROOT/.git/hooks/pre-commit"
+      echo "(Pure Go repo — Husky-based checks are not supported in v1.)"
+    else
+      echo "ERROR: No package.json found. Pure Go repos are not supported in v1." >&2
+      exit 1
+    fi
     ;;
 esac

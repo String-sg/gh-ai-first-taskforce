@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "mock-brew $*" >> "${MOCK_LOG:-/tmp/mock-calls.log}"
+exit 0

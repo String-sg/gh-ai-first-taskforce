@@ -27,7 +27,7 @@ Setup is safe to re-run — it merges rather than overwrites, and never duplicat
 |-----------|-------------|-----------|
 | JS / TS | `package.json` only | ✅ |
 | Mixed (Go + JS/TS) | `package.json` + `go.mod` | ✅ |
-| Pure Go | `go.mod` only | ❌ v1 out of scope |
+| Pure Go | `go.mod` only | ⚠️ gitleaks only (Husky checks not supported in v1) |
 
 | Package manager | Detected by | Supported |
 |-----------------|-------------|-----------|
@@ -168,6 +168,36 @@ All of the above, plus:
 - Merges a `harness:govet` pre-commit block that runs `go vet` on packages containing staged `.go` files only
 
 Type-check failure exits non-zero, blocks the commit, and outputs which check failed. No auto-fix — hooks run in check mode only.
+
+## Secrets scanning
+
+Setup installs [gitleaks](https://github.com/gitleaks/gitleaks) if not already present and merges a secrets-scan pre-commit hook. This is the only harness check that runs on **all repo types**, including pure Go repos.
+
+### All repo types
+
+- Installs `gitleaks` if absent: tries `brew install gitleaks` (macOS), then `go install github.com/zricethezav/gitleaks/v8@latest`; fails with an actionable error message if neither installer is available
+- Writes a default `.gitleaks.toml` if none exists — commit this file to give the team visibility and a place to add allowlist entries for known false positives
+- Merges a `harness:gitleaks` pre-commit block that runs `gitleaks protect --staged` on every commit
+
+### JS / TS and mixed repos
+
+The gitleaks block is appended to `.husky/pre-commit` (same as other harness checks).
+
+### Pure Go repos
+
+The gitleaks block is written directly to `.git/hooks/pre-commit` (Husky is not available without `package.json`). Each developer must run `gh ai-first-taskforce setup` after cloning to install the hook locally.
+
+### On detection
+
+When gitleaks finds a secret, the commit is blocked and the hook prints:
+
+```
+Secret detected. Next steps:
+  - False positive? Add an [[allowlist]] entry to .gitleaks.toml
+  - Real credential? Rotate it immediately — do not push
+```
+
+If gitleaks is missing at hook runtime, the hook fails with an actionable error including the install command.
 
 ## Directory structure
 
