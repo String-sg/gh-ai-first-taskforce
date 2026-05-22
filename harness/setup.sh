@@ -11,6 +11,7 @@ REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 . "$SCRIPT_DIR/lib/ci-workflows.sh"
 . "$SCRIPT_DIR/lib/lint.sh"
 . "$SCRIPT_DIR/lib/format.sh"
+. "$SCRIPT_DIR/lib/typecheck.sh"
 
 NVM_BLOCK='# harness:nvm:begin
 export NVM_DIR="$HOME/.nvm"
@@ -41,6 +42,13 @@ case "$REPO_LANG" in
       install_golangci_hook "$REPO_ROOT"
       ensure_goimports_available
       install_gofmt_hook "$REPO_ROOT"
+    fi
+    ensure_typescript_installed "$REPO_ROOT"
+    ensure_tsconfig "$REPO_ROOT"
+    install_tsc_hook "$REPO_ROOT"
+    if [ "$REPO_LANG" = "mixed" ]; then
+      ensure_go_vet_available
+      install_go_vet_hook "$REPO_ROOT"
     fi
     detect_overlapping_workflows "$REPO_ROOT"
     install_workflow_file "$REPO_ROOT" "$REPO_LANG" "$REPO_PM"
