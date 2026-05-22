@@ -252,3 +252,56 @@ _bun_repo_with_hooks() {
   bash "$SETUP_SCRIPT" "$REPO_DIR"
   [ "$(grep -c "harness:gofmt:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
 }
+
+@test "merges tsc block into pre-commit for JS repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:tsc:begin" "$REPO_DIR/.husky/pre-commit"
+}
+
+@test "merges tsc block into pre-commit for mixed repo" {
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:tsc:begin" "$REPO_DIR/.husky/pre-commit"
+}
+
+@test "merges govet block into pre-commit for mixed repo" {
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "# harness:govet:begin" "$REPO_DIR/.husky/pre-commit"
+}
+
+@test "does not merge govet block for JS-only repo" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  run grep "# harness:govet:begin" "$REPO_DIR/.husky/pre-commit"
+  [ "$status" -ne 0 ]
+}
+
+@test "creates tsconfig.json for JS repo when absent" {
+  _pnpm_repo_with_hooks
+  run bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_DIR/tsconfig.json" ]
+}
+
+@test "re-run does not duplicate tsc block in pre-commit" {
+  _pnpm_repo_with_hooks
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$(grep -c "harness:tsc:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
+}
+
+@test "re-run does not duplicate govet block for mixed repo" {
+  _pnpm_repo_with_hooks
+  touch "$REPO_DIR/go.mod"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  bash "$SETUP_SCRIPT" "$REPO_DIR"
+  [ "$(grep -c "harness:govet:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
+}
