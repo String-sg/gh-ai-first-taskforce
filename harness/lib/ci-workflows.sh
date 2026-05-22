@@ -79,6 +79,9 @@ YAML
 
       - name: Format (Prettier)
         run: npx prettier --check .
+
+      - name: Type-check (tsc)
+        run: npx tsc --noEmit
 YAML
 
   if [ "$lang" = "mixed" ]; then
