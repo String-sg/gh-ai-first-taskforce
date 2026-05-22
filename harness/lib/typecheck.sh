@@ -1,0 +1,132 @@
+# Requires detect_package_manager() from detect-package-manager.sh
+# and merge_block() from merge-hook.sh to be sourced before this file.
+
+# ensure_typescript_installed <repo_root>
+# Installs typescript as a dev dependency if absent from package.json.
+ensure_typescript_installed() {
+  local repo_root="$1"
+  local pm
+
+  if grep -qE '"typescript"\s*:' "$repo_root/package.json" 2>/dev/null; then
+    return 0
+  fi
+
+  pm=$(detect_package_manager "$repo_root")
+  case "$pm" in
+    pnpm) (cd "$repo_root" && pnpm add -D typescript) ;;
+    bun)  (cd "$repo_root" && bun add -D typescript) ;;
+    *)
+      echo "ERROR: Unsupported package manager" >&2
+      return 1
+      ;;
+  esac
+}
+
+# ensure_tsconfig <repo_root>
+# Writes a default tsconfig.json if none exists (up to depth 3, excluding node_modules).
+ensure_tsconfig() {
+  local repo_root="$1"
+
+  # Skip if any tsconfig.json already exists (excluding node_modules, up to depth 3)
+  if [ -n "$(find "$repo_root" -maxdepth 3 -name tsconfig.json -not -path "*/node_modules/*" | head -1)" ]; then
+    return 0
+  fi
+
+  # Detect source directory
+  local src_dir="src"
+  if [ -d "$repo_root/src" ]; then
+    src_dir="src"
+  elif [ -d "$repo_root/web" ]; then
+    src_dir="web"
+  elif [ -d "$repo_root/app" ]; then
+    src_dir="app"
+  fi
+
+  # Detect Vite
+  local vite_types=""
+  if grep -q '"vite"' "$repo_root/package.json" 2>/dev/null; then
+    vite_types='      "types": ["vite/client"],
+'
+  fi
+
+  printf '{\n  "compilerOptions": {\n    "target": "ES2022",\n    "useDefineForClassFields": true,\n    "lib": ["ES2022", "DOM", "DOM.Iterable"],\n    "module": "ESNext",\n' \
+    > "$repo_root/tsconfig.json"
+  if [ -n "$vite_types" ]; then
+    printf '    "types": ["vite/client"],\n' >> "$repo_root/tsconfig.json"
+  fi
+  printf '    "skipLibCheck": true,\n\n    "moduleResolution": "bundler",\n    "allowImportingTsExtensions": true,\n    "verbatimModuleSyntax": true,\n    "moduleDetection": "force",\n    "noEmit": true,\n    "jsx": "react-jsx",\n\n    "strict": true,\n    "noUnusedLocals": true,\n    "noUnusedParameters": true,\n    "erasableSyntaxOnly": true,\n    "noFallthroughCasesInSwitch": true,\n    "noUncheckedSideEffectImports": true\n  },\n  "include": ["%s"]\n}\n' \
+    "$src_dir" >> "$repo_root/tsconfig.json"
+
+  echo "Created default tsconfig.json (include: [\"$src_dir\"])"
+}
+
+# ensure_go_vet_available
+# Returns 0 if go is in PATH, 1 with an actionable error if not.
+ensure_go_vet_available() {
+  if command -v go >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "ERROR: go not found. go vet requires the Go toolchain. Install Go: https://go.dev/dl/" >&2
+  return 1
+}
+
+# install_tsc_hook <repo_root>
+# Merges the tsc pre-commit block into .husky/pre-commit.
+install_tsc_hook() {
+  local repo_root="$1"
+  local tsc_block
+  tsc_block='# harness:tsc:begin
+if ! command -v npx >/dev/null 2>&1; then
+  echo "ERROR: npx not found. Ensure nvm is configured and re-run: gh ai-first-taskforce setup" >&2
+  exit 1
+fi
+_TSC_LIST=$(mktemp)
+find . -name tsconfig.json -not -path "*/node_modules/*" | sort > "$_TSC_LIST"
+if [ ! -s "$_TSC_LIST" ]; then
+  rm -f "$_TSC_LIST"
+  echo "ERROR: No tsconfig.json found. Run: gh ai-first-taskforce setup" >&2
+  exit 1
+fi
+if [ -f ./tsconfig.json ] && grep -q references ./tsconfig.json; then
+  rm -f "$_TSC_LIST"
+  npx tsc --noEmit || exit 1
+else
+  _TSC_FAIL=0
+  while IFS= read -r _cfg; do
+    npx tsc --noEmit -p "$_cfg" || _TSC_FAIL=1
+  done < "$_TSC_LIST"
+  rm -f "$_TSC_LIST"
+  [ "$_TSC_FAIL" = "0" ] || exit 1
+  unset _TSC_FAIL _cfg
+fi
+unset _TSC_LIST
+# harness:tsc:end'
+  merge_block "$repo_root/.husky/pre-commit" "tsc" "$tsc_block" "append"
+}
+
+# install_go_vet_hook <repo_root>
+# Merges the go vet pre-commit block into .husky/pre-commit.
+install_go_vet_hook() {
+  local repo_root="$1"
+  local govet_block
+  govet_block='# harness:govet:begin
+_STAGED_GO=$(git diff --cached --name-only --diff-filter=ACM | grep '"'"'\.go$'"'"' || true)
+if [ -n "$_STAGED_GO" ]; then
+  if ! command -v go >/dev/null 2>&1; then
+    echo "ERROR: go not found. Install Go: https://go.dev/dl/" >&2
+    exit 1
+  fi
+  _VET_DIRS=$(mktemp)
+  echo "$_STAGED_GO" | xargs dirname | sort -u > "$_VET_DIRS"
+  _VET_FAIL=0
+  while IFS= read -r _dir; do
+    go vet "./$_dir" || _VET_FAIL=1
+  done < "$_VET_DIRS"
+  rm -f "$_VET_DIRS"
+  [ "$_VET_FAIL" = "0" ] || exit 1
+  unset _VET_DIRS _VET_FAIL _dir
+fi
+unset _STAGED_GO
+# harness:govet:end'
+  merge_block "$repo_root/.husky/pre-commit" "govet" "$govet_block" "append"
+}
