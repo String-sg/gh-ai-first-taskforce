@@ -9,6 +9,7 @@ REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 . "$SCRIPT_DIR/lib/merge-hook.sh"
 . "$SCRIPT_DIR/lib/husky.sh"
 . "$SCRIPT_DIR/lib/ci-workflows.sh"
+. "$SCRIPT_DIR/lib/lint.sh"
 
 NVM_BLOCK='# harness:nvm:begin
 export NVM_DIR="$HOME/.nvm"
@@ -19,15 +20,27 @@ REPO_LANG=$(detect_language "$REPO_ROOT")
 
 case "$REPO_LANG" in
   js|mixed)
+    REPO_PM=$(detect_package_manager "$REPO_ROOT")
     echo "Detected $REPO_LANG repo — setting up Husky hooks..."
     ensure_husky_installed "$REPO_ROOT"
     ensure_husky_init "$REPO_ROOT"
     ensure_hook_exists "$REPO_ROOT/.husky/pre-push"
     merge_block "$REPO_ROOT/.husky/pre-commit" "nvm" "$NVM_BLOCK" "after-shebang"
     merge_block "$REPO_ROOT/.husky/pre-push" "nvm" "$NVM_BLOCK" "after-shebang"
+    ensure_eslint_installed "$REPO_ROOT"
+    ensure_eslint_config "$REPO_ROOT"
+    ensure_lint_staged_installed "$REPO_ROOT"
+    ensure_lint_staged_config "$REPO_ROOT"
+    install_lint_staged_hook "$REPO_ROOT"
+    if [ "$REPO_LANG" = "mixed" ]; then
+      ensure_golangci_lint_available
+      ensure_golangci_config "$REPO_ROOT"
+      install_golangci_hook "$REPO_ROOT"
+    fi
     detect_overlapping_workflows "$REPO_ROOT"
-    install_workflow_file "$REPO_ROOT" "$SCRIPT_DIR"
+    install_workflow_file "$REPO_ROOT" "$REPO_LANG" "$REPO_PM"
     echo "Done. Husky hooks configured at $REPO_ROOT/.husky/"
+    echo "NOTE: Add 'harness / checks' as a required status check in GitHub branch protection to enforce CI linting on PRs."
     ;;
   unsupported)
     echo "ERROR: No package.json found. Pure Go repos are not supported in v1." >&2

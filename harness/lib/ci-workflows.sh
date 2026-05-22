@@ -25,20 +25,92 @@ _write_manifest_entry() {
     "$path" "$checksum" > "$manifest_file"
 }
 
-# install_workflow_file <repo_root> <harness_dir>
-# Copies harness/workflows/harness-checks.yml into .github/workflows/ if the
-# template checksum differs from the manifest entry (delta update).
+# generate_workflow_yaml <lang> <pm>
+# Emits the full harness-checks.yml content for the given repo type and package manager.
+# lang: js | mixed
+# pm:   pnpm | bun
+generate_workflow_yaml() {
+  local lang="$1" pm="$2"
+
+  cat <<'YAML'
+name: Harness Checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  harness:
+    name: harness / checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+YAML
+
+  case "$pm" in
+    pnpm)
+      cat <<'YAML'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+YAML
+      ;;
+    bun)
+      cat <<'YAML'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+YAML
+      ;;
+  esac
+
+  cat <<'YAML'
+
+      - name: Lint (ESLint)
+        run: npx eslint .
+YAML
+
+  if [ "$lang" = "mixed" ]; then
+    cat <<'YAML'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+YAML
+  fi
+}
+
+# install_workflow_file <repo_root> <lang> <pm>
+# Generates harness-checks.yml for the given lang+pm, writes it to
+# .github/workflows/harness-checks.yml only when the content has changed
+# (delta update via harness-manifest.json checksum).
 install_workflow_file() {
-  local repo_root="$1" harness_dir="$2"
-  local template="$harness_dir/workflows/harness-checks.yml"
+  local repo_root="$1" lang="$2" pm="$3"
   local rel_path=".github/workflows/harness-checks.yml"
   local dest="$repo_root/$rel_path"
   local manifest="$repo_root/.github/harness-manifest.json"
+  local content tmp current_checksum installed_checksum
 
-  local current_checksum
-  current_checksum=$(_sha256 "$template")
+  content=$(generate_workflow_yaml "$lang" "$pm")
 
-  local installed_checksum
+  tmp=$(mktemp)
+  printf '%s\n' "$content" > "$tmp"
+  current_checksum=$(_sha256 "$tmp") || { rm -f "$tmp"; return 1; }
+  rm -f "$tmp"
+
   installed_checksum=$(_read_manifest_checksum "$manifest" "$rel_path")
 
   if [ "$current_checksum" = "$installed_checksum" ] && [ -f "$dest" ]; then
@@ -46,7 +118,7 @@ install_workflow_file() {
   fi
 
   mkdir -p "$(dirname "$dest")"
-  cp "$template" "$dest"
+  printf '%s\n' "$content" > "$dest"
   _write_manifest_entry "$manifest" "$rel_path" "$current_checksum"
   echo "Installed $rel_path"
 }
