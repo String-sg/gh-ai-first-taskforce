@@ -96,3 +96,13 @@ install_gitleaks_hook() {
   local repo_root="$1"
   merge_block "$repo_root/.husky/pre-commit" "gitleaks" "$(_gitleaks_hook_block)" "append"
 }
+
+# install_gitleaks_git_hook <repo_root>
+# For pure Go repos: merges the gitleaks block into .git/hooks/pre-commit directly.
+# Creates .git/hooks/pre-commit with a shebang if it does not already exist.
+install_gitleaks_git_hook() {
+  local repo_root="$1"
+  local hook_file="$repo_root/.git/hooks/pre-commit"
+  ensure_hook_exists "$hook_file"
+  merge_block "$hook_file" "gitleaks" "$(_gitleaks_hook_block)" "append"
+}

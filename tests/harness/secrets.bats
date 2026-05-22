@@ -160,3 +160,46 @@ teardown() {
   install_gitleaks_hook "$REPO_DIR"
   [ "$(grep -c "harness:gitleaks:begin" "$REPO_DIR/.husky/pre-commit")" = "1" ]
 }
+
+# ── install_gitleaks_git_hook ─────────────────────────────────────────────────
+
+@test "install_gitleaks_git_hook: creates .git/hooks/pre-commit if absent" {
+  mkdir -p "$REPO_DIR/.git"
+  install_gitleaks_git_hook "$REPO_DIR"
+  [ -f "$REPO_DIR/.git/hooks/pre-commit" ]
+}
+
+@test "install_gitleaks_git_hook: .git/hooks/pre-commit is executable" {
+  mkdir -p "$REPO_DIR/.git"
+  install_gitleaks_git_hook "$REPO_DIR"
+  [ -x "$REPO_DIR/.git/hooks/pre-commit" ]
+}
+
+@test "install_gitleaks_git_hook: merges harness:gitleaks:begin sentinel" {
+  mkdir -p "$REPO_DIR/.git/hooks"
+  printf '#!/bin/sh\n' > "$REPO_DIR/.git/hooks/pre-commit"
+  chmod +x "$REPO_DIR/.git/hooks/pre-commit"
+  install_gitleaks_git_hook "$REPO_DIR"
+  grep -q "# harness:gitleaks:begin" "$REPO_DIR/.git/hooks/pre-commit"
+}
+
+@test "install_gitleaks_git_hook: hook contains gitleaks protect --staged" {
+  mkdir -p "$REPO_DIR/.git"
+  install_gitleaks_git_hook "$REPO_DIR"
+  grep -q "gitleaks protect --staged" "$REPO_DIR/.git/hooks/pre-commit"
+}
+
+@test "install_gitleaks_git_hook: is idempotent on re-run" {
+  mkdir -p "$REPO_DIR/.git"
+  install_gitleaks_git_hook "$REPO_DIR"
+  install_gitleaks_git_hook "$REPO_DIR"
+  [ "$(grep -c "harness:gitleaks:begin" "$REPO_DIR/.git/hooks/pre-commit")" = "1" ]
+}
+
+@test "install_gitleaks_git_hook: preserves existing hook content" {
+  mkdir -p "$REPO_DIR/.git/hooks"
+  printf '#!/bin/sh\n# existing hook content\n' > "$REPO_DIR/.git/hooks/pre-commit"
+  chmod +x "$REPO_DIR/.git/hooks/pre-commit"
+  install_gitleaks_git_hook "$REPO_DIR"
+  grep -q "# existing hook content" "$REPO_DIR/.git/hooks/pre-commit"
+}
