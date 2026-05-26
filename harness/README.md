@@ -4,11 +4,10 @@ Pre-commit and pre-push hook scaffolding for the AI-First Taskforce harness.
 
 ## Setup
 
-Clone the repo, install the `gh` extension from the local clone, then run setup inside any target repo:
+Install the `gh` extension, then run setup inside any target repo:
 
 ```sh
-git clone https://github.com/transformteamsg/ai-first-taskforce.git
-gh extension install ./ai-first-taskforce
+gh extension install transformteamsg/gh-ai-first-taskforce
 cd /path/to/your-repo
 gh ai-first-taskforce setup
 ```
@@ -21,6 +20,20 @@ Setup will:
 5. Merge the NVM preamble block into both hooks
 
 Setup is safe to re-run — it merges rather than overwrites, and never duplicates content.
+
+## Updating
+
+To pick up new harness changes in a target repo:
+
+```sh
+gh extension upgrade ai-first-taskforce
+cd /path/to/your-repo
+gh ai-first-taskforce setup
+```
+
+`gh extension upgrade` pulls the latest scripts from the remote. Re-running `setup` is safe — existing sentinel blocks are skipped, new blocks are appended, and `harness-checks.yml` is only rewritten when its checksum has changed.
+
+Each developer on the team must run this after a harness update to get the new hook blocks locally. The CI workflow update is committed to the repo and shared automatically.
 
 ## Supported repos
 
