@@ -7,11 +7,13 @@ Pre-commit and pre-push hook scaffolding for the AI-First Taskforce harness.
 Clone the repo, install the `gh` extension from the local clone, then run setup inside any target repo:
 
 ```sh
-git clone https://github.com/transformteamsg/ai-first-taskforce.git
-gh extension install ./ai-first-taskforce
+git clone https://github.com/transformteamsg/ai-first-taskforce.git gh-ai-first-taskforce
+gh extension install ./gh-ai-first-taskforce
 cd /path/to/your-repo
 gh ai-first-taskforce setup
 ```
+
+> **Note:** The directory must be named `gh-ai-first-taskforce` — `gh extension install` requires the local directory name to start with `gh-`.
 
 Setup will:
 1. Detect the repo type (`js` / `mixed` Go+JS — pure Go is not supported in v1)
