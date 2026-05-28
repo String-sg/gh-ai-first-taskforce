@@ -16,7 +16,12 @@ REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 . "$SCRIPT_DIR/lib/ai-review.sh"
 
 NVM_BLOCK='# harness:nvm:begin
-. "$(dirname "$0")/_/env.sh"
+_HARNESS_GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+if [ -n "$_HARNESS_GIT_DIR" ]; then
+  _HARNESS_ENV="$(cd "$_HARNESS_GIT_DIR/.." 2>/dev/null && pwd)/.harness/env.sh"
+  [ -f "$_HARNESS_ENV" ] && . "$_HARNESS_ENV"
+fi
+unset _HARNESS_GIT_DIR _HARNESS_ENV
 # harness:nvm:end'
 
 AI_MODEL=$(parse_harness_config "$REPO_ROOT" "ai_review.model")

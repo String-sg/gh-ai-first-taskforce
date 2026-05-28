@@ -23,7 +23,7 @@ ensure_husky_installed() {
 
 ensure_env_sh() {
   local repo_root="$1"
-  local dest="$repo_root/.husky/_/env.sh"
+  local dest="$repo_root/.harness/env.sh"
   mkdir -p "$(dirname "$dest")"
   cp "${SCRIPT_DIR}/hooks/_/env.sh" "$dest"
 }
