@@ -23,14 +23,9 @@ ensure_husky_installed() {
 
 ensure_env_sh() {
   local repo_root="$1"
-  local env_file="$repo_root/.husky/_/env.sh"
-  mkdir -p "$(dirname "$env_file")"
-  [ -f "$env_file" ] && return 0
-  cat > "$env_file" <<'EOF'
-#!/bin/sh
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-EOF
+  local dest="$repo_root/.harness/env.sh"
+  mkdir -p "$(dirname "$dest")"
+  cp "${SCRIPT_DIR}/hooks/_/env.sh" "$dest"
 }
 
 ensure_husky_init() {

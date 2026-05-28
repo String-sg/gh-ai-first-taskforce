@@ -69,6 +69,7 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   echo "  other:  go install github.com/zricethezav/gitleaks/v8@latest" >&2
   exit 1
 fi
+unset _GL_ARGS
 [ -f .gitleaks.toml ] && _GL_ARGS=1
 gitleaks protect --staged ${_GL_ARGS:+--config .gitleaks.toml} || {
   echo "" >&2

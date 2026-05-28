@@ -139,7 +139,7 @@ if ! command -v node >/dev/null 2>&1; then
   echo \"ERROR: node not found. Ensure nvm is configured and re-run: gh ai-first-taskforce setup\" >&2
   exit 1
 fi
-$runner
+$runner || exit 1
 # harness:lint:end"
   merge_block "$repo_root/.husky/pre-commit" "lint" "$lint_block" "append"
 }

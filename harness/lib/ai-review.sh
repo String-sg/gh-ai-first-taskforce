@@ -48,9 +48,18 @@ install_ai_review_hook() {
   install_ai_review_runner "$repo_root"
 
   block='# harness:ai-review:begin
-_HARNESS_RUNNER="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/.harness/ai-review-runner.sh"
-[ -f "$_HARNESS_RUNNER" ] && HARNESS_AI_MODEL="'"$model"'" sh "$_HARNESS_RUNNER"
-unset _HARNESS_RUNNER
+_HARNESS_GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+if [ -z "$_HARNESS_GIT_DIR" ]; then
+  echo "harness: ai-review skipped (unable to resolve repository root)" >&2
+else
+  _HARNESS_RUNNER="$(cd "$_HARNESS_GIT_DIR/.." && pwd)/.harness/ai-review-runner.sh"
+  if [ -f "$_HARNESS_RUNNER" ]; then
+    HARNESS_AI_MODEL="'"$model"'" sh "$_HARNESS_RUNNER"
+  else
+    echo "harness: ai-review skipped (runner not found — run: gh ai-first-taskforce setup)" >&2
+  fi
+fi
+unset _HARNESS_GIT_DIR _HARNESS_RUNNER
 # harness:ai-review:end'
 
   merge_block "$pre_push" "ai-review" "$block" ""
