@@ -171,18 +171,14 @@ _git_repo_setup() {
   rm -rf "$REMOTE_DIR" "$WORK_DIR"
 }
 
-@test "runner: commits review file with expected message" {
+@test "runner: does not create a new commit after writing review" {
   _runner_setup
   _git_repo_setup
-  local sha branch
-  sha=$(git -C "$WORK_DIR" rev-parse --short HEAD)
-  branch=$(git -C "$WORK_DIR" rev-parse --abbrev-ref HEAD | tr '/' '-')
 
   env PATH="$MOCK_PATH:/usr/bin:/bin:/usr/local/bin" \
-    HARNESS_AI_KEY_VAR="ANTHROPIC_API_KEY" ANTHROPIC_API_KEY="test-key" \
     sh -c "cd '$WORK_DIR' && sh '$RUNNER'"
 
-  [ "$(git -C "$WORK_DIR" log -1 --format='%s')" = "chore: ai review for ${branch} @ ${sha}" ]
+  [ "$(git -C "$WORK_DIR" log -1 --format='%s')" = "local work" ]
   rm -rf "$REMOTE_DIR" "$WORK_DIR"
 }
 

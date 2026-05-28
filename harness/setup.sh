@@ -15,13 +15,21 @@ REPO_ROOT="${1:-$(git rev-parse --show-toplevel)}"
 . "$SCRIPT_DIR/lib/secrets.sh"
 . "$SCRIPT_DIR/lib/ai-review.sh"
 
-NVM_BLOCK='# harness:nvm:begin
-_HARNESS_GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
-if [ -n "$_HARNESS_GIT_DIR" ]; then
-  _HARNESS_ENV="$(cd "$_HARNESS_GIT_DIR/.." 2>/dev/null && pwd)/.harness/env.sh"
-  [ -f "$_HARNESS_ENV" ] && . "$_HARNESS_ENV"
+ROOT_BLOCK='# harness:root:begin
+_HARNESS_GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null)
+if [ -n "$_HARNESS_GIT_COMMON" ]; then
+  case "$_HARNESS_GIT_COMMON" in
+    /*) _HARNESS_ROOT=$(cd "$_HARNESS_GIT_COMMON/.." 2>/dev/null && pwd) ;;
+    *)  _HARNESS_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) ;;
+  esac
 fi
-unset _HARNESS_GIT_DIR _HARNESS_ENV
+unset _HARNESS_GIT_COMMON
+# harness:root:end'
+
+NVM_BLOCK='# harness:nvm:begin
+if [ -n "$_HARNESS_ROOT" ] && [ -f "$_HARNESS_ROOT/.harness/env.sh" ]; then
+  . "$_HARNESS_ROOT/.harness/env.sh"
+fi
 # harness:nvm:end'
 
 AI_MODEL=$(parse_harness_config "$REPO_ROOT" "ai_review.model")
@@ -41,6 +49,8 @@ case "$REPO_LANG" in
     ensure_env_sh "$REPO_ROOT"
     merge_block "$REPO_ROOT/.husky/pre-commit" "nvm" "$NVM_BLOCK" "after-shebang"
     merge_block "$REPO_ROOT/.husky/pre-push" "nvm" "$NVM_BLOCK" "after-shebang"
+    merge_block "$REPO_ROOT/.husky/pre-commit" "root" "$ROOT_BLOCK" "after-shebang"
+    merge_block "$REPO_ROOT/.husky/pre-push" "root" "$ROOT_BLOCK" "after-shebang"
     ensure_eslint_installed "$REPO_ROOT"
     ensure_eslint_config "$REPO_ROOT"
     ensure_prettier_installed "$REPO_ROOT"

@@ -136,7 +136,7 @@ install_lint_staged_hook() {
   esac
   local lint_block="# harness:lint:begin
 if ! command -v node >/dev/null 2>&1; then
-  echo \"ERROR: node not found. Ensure nvm is configured and re-run: gh ai-first-taskforce setup\" >&2
+  echo \"ERROR: node not found. Ensure your Node.js version manager (nvm, fnm, volta, etc.) is configured for non-interactive shells, then re-run: gh ai-first-taskforce setup\" >&2
   exit 1
 fi
 $runner || exit 1

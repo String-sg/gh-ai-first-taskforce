@@ -85,7 +85,7 @@ if [ ! -s \"\$_TSC_LIST\" ]; then
   echo \"ERROR: No tsconfig.json found. Run: gh ai-first-taskforce setup\" >&2
   exit 1
 fi
-if [ -f ./tsconfig.json ] && grep -q '\"references\"' ./tsconfig.json; then
+if [ -f ./tsconfig.json ] && grep -qE '^\s*\"references\"\s*:' ./tsconfig.json; then
   rm -f \"\$_TSC_LIST\"
   $tsc_runner --noEmit || exit 1
 else

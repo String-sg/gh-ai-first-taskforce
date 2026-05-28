@@ -36,10 +36,10 @@ install_ai_review_runner() {
   chmod +x "$dest"
 }
 
-# install_ai_review_hook <repo_root> <model> <api_key_var>
+# install_ai_review_hook <repo_root> <model>
 # Installs the runner and wires the pre-push hook call block.
-# The model and api_key_var are substituted at install time;
-# $(git rev-parse --show-toplevel) is left for runtime evaluation.
+# Requires the harness:root block to be present (sets $_HARNESS_ROOT at runtime).
+# $model is substituted at install time.
 install_ai_review_hook() {
   local repo_root="$1" model="$2"
   local pre_push="$repo_root/.husky/pre-push"
@@ -48,18 +48,13 @@ install_ai_review_hook() {
   install_ai_review_runner "$repo_root"
 
   block='# harness:ai-review:begin
-_HARNESS_GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
-if [ -z "$_HARNESS_GIT_DIR" ]; then
+if [ -z "$_HARNESS_ROOT" ]; then
   echo "harness: ai-review skipped (unable to resolve repository root)" >&2
+elif [ ! -f "$_HARNESS_ROOT/.harness/ai-review-runner.sh" ]; then
+  echo "harness: ai-review skipped (runner not found — run: gh ai-first-taskforce setup)" >&2
 else
-  _HARNESS_RUNNER="$(cd "$_HARNESS_GIT_DIR/.." && pwd)/.harness/ai-review-runner.sh"
-  if [ -f "$_HARNESS_RUNNER" ]; then
-    HARNESS_AI_MODEL="'"$model"'" sh "$_HARNESS_RUNNER"
-  else
-    echo "harness: ai-review skipped (runner not found — run: gh ai-first-taskforce setup)" >&2
-  fi
+  HARNESS_AI_MODEL="'"$model"'" sh "$_HARNESS_ROOT/.harness/ai-review-runner.sh"
 fi
-unset _HARNESS_GIT_DIR _HARNESS_RUNNER
 # harness:ai-review:end'
 
   merge_block "$pre_push" "ai-review" "$block" ""
