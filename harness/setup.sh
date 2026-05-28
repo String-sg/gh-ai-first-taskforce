@@ -33,6 +33,7 @@ case "$REPO_LANG" in
     echo "Detected $REPO_LANG repo — setting up Husky hooks..."
     ensure_husky_installed "$REPO_ROOT"
     ensure_husky_init "$REPO_ROOT"
+    ensure_hook_exists "$REPO_ROOT/.husky/pre-commit"
     ensure_hook_exists "$REPO_ROOT/.husky/pre-push"
     merge_block "$REPO_ROOT/.husky/pre-commit" "nvm" "$NVM_BLOCK" "after-shebang"
     merge_block "$REPO_ROOT/.husky/pre-push" "nvm" "$NVM_BLOCK" "after-shebang"

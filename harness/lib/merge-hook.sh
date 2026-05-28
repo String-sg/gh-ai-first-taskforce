@@ -3,8 +3,8 @@ ensure_hook_exists() {
   if [ ! -f "$hook_file" ]; then
     mkdir -p "$(dirname "$hook_file")"
     printf '#!/bin/sh\n' > "$hook_file"
-    chmod +x "$hook_file"
   fi
+  chmod +x "$hook_file"
 }
 
 # merge_block <hook_file> <block_id> <block_content> [position]

@@ -74,17 +74,18 @@ install_tsc_hook() {
   local tsc_block
   tsc_block="# harness:tsc:begin
 if ! command -v node >/dev/null 2>&1; then
-  echo \"ERROR: node not found. Ensure nvm is configured and re-run: gh ai-first-taskforce setup\" >&2
+  echo \"ERROR: node not found. Ensure your Node.js version manager (nvm, fnm, volta, etc.) is configured for non-interactive shells, then re-run: gh ai-first-taskforce setup\" >&2
   exit 1
 fi
 _TSC_LIST=\$(mktemp)
+trap 'rm -f \"\$_TSC_LIST\"' EXIT
 find . -name tsconfig.json -not -path \"*/node_modules/*\" | sort > \"\$_TSC_LIST\"
 if [ ! -s \"\$_TSC_LIST\" ]; then
   rm -f \"\$_TSC_LIST\"
   echo \"ERROR: No tsconfig.json found. Run: gh ai-first-taskforce setup\" >&2
   exit 1
 fi
-if [ -f ./tsconfig.json ] && grep -q references ./tsconfig.json; then
+if [ -f ./tsconfig.json ] && grep -q '\"references\"' ./tsconfig.json; then
   rm -f \"\$_TSC_LIST\"
   $tsc_runner --noEmit || exit 1
 else
@@ -97,6 +98,7 @@ else
   unset _TSC_FAIL _cfg
 fi
 unset _TSC_LIST
+trap - EXIT
 # harness:tsc:end"
   merge_block "$repo_root/.husky/pre-commit" "tsc" "$tsc_block" "append"
 }

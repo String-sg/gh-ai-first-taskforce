@@ -49,7 +49,7 @@ install_ai_review_hook() {
 
   block='# harness:ai-review:begin
 HARNESS_AI_MODEL="'"$model"'" HARNESS_AI_KEY_VAR="'"$api_key_var"'" \
-  sh "$(git rev-parse --show-toplevel)/.harness/ai-review-runner.sh"
+  sh "$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/.harness/ai-review-runner.sh"
 # harness:ai-review:end'
 
   merge_block "$pre_push" "ai-review" "$block" ""
