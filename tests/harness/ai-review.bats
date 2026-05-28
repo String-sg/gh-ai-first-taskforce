@@ -75,24 +75,6 @@ _runner_setup() {
   [[ "$output" == *"claude CLI not found"* ]]
 }
 
-@test "runner: skips with warning when API key env var is unset" {
-  _runner_setup
-  run env PATH="$MOCK_PATH:/usr/bin:/bin:/usr/local/bin" \
-    HARNESS_AI_KEY_VAR="ANTHROPIC_API_KEY" \
-    sh "$RUNNER"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"ANTHROPIC_API_KEY not set"* ]]
-}
-
-@test "runner: skips with warning when API key env var is empty" {
-  _runner_setup
-  run env PATH="$MOCK_PATH:/usr/bin:/bin:/usr/local/bin" \
-    HARNESS_AI_KEY_VAR="ANTHROPIC_API_KEY" ANTHROPIC_API_KEY="" \
-    sh "$RUNNER"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"ANTHROPIC_API_KEY not set"* ]]
-}
-
 # ── ai-review-runner.sh review flow ─────────────────────────────────────
 
 _git_repo_setup() {
@@ -241,23 +223,22 @@ _husky_setup() {
 
 @test "install_ai_review_hook: copies runner to .harness/" {
   _husky_setup
-  run install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6" "ANTHROPIC_API_KEY"
+  run install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6"
   [ "$status" -eq 0 ]
   [ -f "$REPO_DIR/.harness/ai-review-runner.sh" ]
 }
 
 @test "install_ai_review_hook: merges call block into .husky/pre-push" {
   _husky_setup
-  install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6" "ANTHROPIC_API_KEY"
+  install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6"
   grep -q "# harness:ai-review:begin" "$REPO_DIR/.husky/pre-push"
   grep -q "ai-review-runner.sh" "$REPO_DIR/.husky/pre-push"
   grep -qF 'HARNESS_AI_MODEL="claude-sonnet-4-6"' "$REPO_DIR/.husky/pre-push"
-  grep -qF 'HARNESS_AI_KEY_VAR="ANTHROPIC_API_KEY"' "$REPO_DIR/.husky/pre-push"
 }
 
 @test "install_ai_review_hook: is idempotent — does not duplicate block" {
   _husky_setup
-  install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6" "ANTHROPIC_API_KEY"
-  install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6" "ANTHROPIC_API_KEY"
+  install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6"
+  install_ai_review_hook "$REPO_DIR" "claude-sonnet-4-6"
   [ "$(grep -c 'harness:ai-review:begin' "$REPO_DIR/.husky/pre-push")" = "1" ]
 }

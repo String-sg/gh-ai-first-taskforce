@@ -79,7 +79,7 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 _TSC_LIST=\$(mktemp)
 trap 'rm -f \"\$_TSC_LIST\"' EXIT
-find . -name tsconfig.json -not -path \"*/node_modules/*\" | sort > \"\$_TSC_LIST\"
+git ls-files | grep 'tsconfig\.json\$' | sort > \"\$_TSC_LIST\"
 if [ ! -s \"\$_TSC_LIST\" ]; then
   rm -f \"\$_TSC_LIST\"
   echo \"ERROR: No tsconfig.json found. Run: gh ai-first-taskforce setup\" >&2
