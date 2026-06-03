@@ -27,7 +27,7 @@ Use `superpowers:requesting-code-review` instead when you need a fast pass durin
 2. Check for prior reports: `ls review/<safe-branch>/` (if the directory exists)
    - If prior reports exist, read the most recent one to find the last reviewed HEAD SHA (recorded in the report's "Reviewed Commits" section), then **prompt the user about prior findings before doing anything else** (see Re-review below)
 3. Get the diff:
-   - **Detect the default branch:** try `main`, then `master`, then `develop` — use whichever resolves as a local ref (`git rev-parse --verify <name>`). If none resolve, stop and tell the user: "Cannot find a base branch — please run: `git fetch origin`".
+   - **Detect the default branch:** try `main`, then `master`, then `develop`, then `dev` — use whichever resolves as a local ref (`git rev-parse --verify <name>`). If none resolve, stop and tell the user: "Cannot find a base branch — please run: `git fetch origin` and ensure the default branch is checked out locally".
    - **First review:** `git log <base>..HEAD --oneline` to list all branch commits, then `git diff $(git merge-base HEAD <base>)...HEAD` for the full diff. Record every commit SHA + message.
    - **Subsequent review:** Use the last reviewed HEAD SHA from the prior report. Run `git log <last-sha>..HEAD --oneline` to list new commits only, then `git diff <last-sha>..HEAD` for the delta. Record only the new commits.
 4. Run all 7 review angles; collect candidates with `file`, `line`, `summary`, `failure_scenario`
@@ -35,17 +35,17 @@ Use `superpowers:requesting-code-review` instead when you need a fast pass durin
 6. Verify each candidate — label as **CONFIRMED**, **PLAUSIBLE**, or **REFUTED**
    - PLAUSIBLE by default for: races, nil on rare-but-reachable paths, falsy-zero, off-by-one, regex missing anchor
    - REFUTED only when provably wrong — cite the exact line or invariant that rules it out
-6b. For each CONFIRMED or PLAUSIBLE finding, validate the suggestion before writing it:
-   - Check `package.json` (or equivalent — `go.mod`, `requirements.txt`, `Gemfile`) for the versions of any libraries referenced in the suggestion
-   - If the suggestion uses an API, method, or option that does not exist in the installed version, revise it to match — or note the required version upgrade explicitly
-   - If the suggestion is a shell command or script, mentally trace it: does it handle the failure modes described in the finding?
-7. Drop all REFUTED findings — see Rules › Refuted findings
-8. If re-review: reconcile remaining findings with prior dispositions (see Re-review below)
-9. Count total kept findings:
-   - **< 10:** all findings get full entries including Suggestions
-   - **≥ 10:** Critical and Important get full entries; Suggestions roll into a "Cleanup Notes" bullet list
-10. Group findings under `### Critical`, `### Important`, `### Suggestion` subsections — omit any subsection with no entries
-11. Write the report to `review/<safe-branch>/report-<DDMMYYYYHHMMSS>.md` — create the directory if needed: `mkdir -p review/<safe-branch>`
+7. For each CONFIRMED or PLAUSIBLE finding, validate the suggestion before writing it:
+   - Look for `package.json`, `go.mod`, `requirements.txt`, or `Gemfile` at the repo root
+   - If found: check the installed version of any library referenced in the suggestion; if the suggestion uses an API or option not available in that version, revise it to match or note the required upgrade explicitly
+   - If none found: note that no manifest was detected, skip version validation, and ensure any shell commands are mentally traced against the failure modes described in the finding
+8. Drop all REFUTED findings — see Rules › Refuted findings
+9. If re-review: reconcile remaining findings with prior dispositions (see Re-review below)
+10. Count total kept findings:
+    - **< 10:** all findings get full entries including Suggestions
+    - **≥ 10:** Critical and Important get full entries; Suggestions roll into a "Cleanup Notes" bullet list
+11. Group findings under `### Critical`, `### Important`, `### Suggestion` subsections — omit any subsection with no entries
+12. Write the report to `review/<safe-branch>/report-<DDMMYYYYHHMMSS>.md` — create the directory if needed: `mkdir -p review/<safe-branch>`
 
 ---
 
@@ -189,9 +189,9 @@ For findings not covered by the user's response, reconcile against the current d
 
 ## Output File
 
-- Path: `review/<safe-branch>/report-<DDMMYYYYHHMMSS>.md` relative to the repo root (`<safe-branch>` is defined in step 1)
+- Path: `review/<safe-branch>/report-<DDMMYYYYHHMMSS>.md` relative to the repo root (`<safe-branch>` defined in step 1)
 - Datetime: local time, 24-hour — e.g. `report-03062026143045.md`
-- After writing, print: `Report saved: review/<safe-branch>/<filename>.md`
+- After writing (step 12), print: `Report saved: review/<safe-branch>/<filename>.md`
 
 ---
 

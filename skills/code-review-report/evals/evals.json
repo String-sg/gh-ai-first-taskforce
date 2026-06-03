@@ -28,11 +28,11 @@
     {
       "id": 3,
       "prompt": "Review my changes again — I've pushed a couple more commits since the last review.",
-      "expected_output": "The skill finds the prior report, extracts last reviewed HEAD SHA (6fff67d), diffs only new commits since that SHA, shows prior findings for disposition, then produces a new report with a Prior Review section and Reviewed Commits showing only the new commit (30110b7).",
+      "expected_output": "The skill finds the prior report, extracts last reviewed HEAD SHA (6fff67d), diffs only new commits since that SHA, shows prior findings for disposition, then produces a new report with a Prior Review section and Reviewed Commits showing only the new commits (30110b7 and d0f8484).",
       "files": [],
       "assertions": [
         "Report contains a Prior Review section referencing the prior report filename (report-02062026120000.md)",
-        "Reviewed Commits table contains 30110b7 but NOT 6fff67d",
+        "Reviewed Commits table contains d0f8484 and 30110b7 but NOT 6fff67d",
         "Prior Review table contains a disposition for the upstream diff finding",
         "New report file is written with a different timestamp than report-02062026120000.md"
       ]
