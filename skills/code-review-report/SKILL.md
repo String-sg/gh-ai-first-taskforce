@@ -22,9 +22,12 @@ Use `superpowers:requesting-code-review` instead when you need a fast pass durin
 ## Process
 
 1. Get branch name: `git rev-parse --abbrev-ref HEAD`
+   - If the branch is `main`, `master`, `develop`, or `dev`, **stop immediately** and tell the user: "Code reviews are for feature branches only — switch to a feature branch and re-run."
 2. Check for prior reports: `ls review/<branch-name>/` (if the directory exists)
-   - If prior reports exist, read the most recent one, then **prompt the user about prior findings before doing anything else** (see Re-review below)
-3. Get the diff: `git diff @{upstream}...HEAD` (or `git diff HEAD~1` / a specific range if specified)
+   - If prior reports exist, read the most recent one to find the last reviewed HEAD SHA (recorded in the report's "Reviewed Commits" section), then **prompt the user about prior findings before doing anything else** (see Re-review below)
+3. Get the diff:
+   - **First review:** `git log main..HEAD --oneline` to list all branch commits, then `git diff $(git merge-base HEAD main)...HEAD` for the full diff. Record every commit SHA + message.
+   - **Subsequent review:** Use the last reviewed HEAD SHA from the prior report. Run `git log <last-sha>..HEAD --oneline` to list new commits only, then `git diff <last-sha>..HEAD` for the delta. Record only the new commits.
 4. Run all 7 review angles; collect candidates with `file`, `line`, `summary`, `failure_scenario`
 5. Deduplicate near-duplicates (same defect, same location → keep one)
 6. Verify each candidate — label as **CONFIRMED**, **PLAUSIBLE**, or **REFUTED**
@@ -36,7 +39,7 @@ Use `superpowers:requesting-code-review` instead when you need a fast pass durin
    - **< 10:** all findings get full entries including Suggestions
    - **≥ 10:** Critical and Important get full entries; Suggestions roll into a "Cleanup Notes" bullet list
 10. Group findings under `### Critical`, `### Important`, `### Suggestion` subsections — omit any subsection with no entries
-11. Write the report to `review/<branch-name>/<YYYY-MM-DD-HHMM>.md` — create the directory if needed: `mkdir -p review/<branch-name>`
+11. Write the report to `review/<branch-name>/report-<DDMMYYYYHHMMSS>.md` — create the directory if needed: `mkdir -p review/<branch-name>`
 
 ---
 
@@ -57,6 +60,8 @@ Run all seven. Each surfaces up to 6 candidates.
 ---
 
 ## Re-review
+
+**Scope:** Only the new commits (delta since last review) are analysed for new findings through the 7 review angles. Prior findings from the last report are each checked against the current code to assign a disposition (see table below) — they are not re-analysed through the 7 review angles.
 
 Before running any analysis, present each prior finding as a numbered list and ask:
 
@@ -86,8 +91,8 @@ For findings not covered by the user's response, reconcile against the current d
 ```markdown
 # Code Review — <branch> (<YYYY-MM-DD HH:MM>)
 
-> **File:** `review/<branch>/<YYYY-MM-DD-HHMM>.md`
-> **Based on:** `git diff @{upstream}...HEAD` at <short commit SHA>
+> **File:** `review/<branch>/report-<DDMMYYYYHHMMSS>.md`
+> **Based on:** commits up to `<HEAD short SHA>` *(first review: full branch; subsequent: delta since `<prior HEAD SHA>`)*
 
 ## Summary
 
@@ -101,9 +106,19 @@ For findings not covered by the user's response, reconcile against the current d
 
 ---
 
+## Reviewed Commits
+
+| SHA (short) | Message |
+|-------------|---------|
+| `abc1234` | feat: add X |
+
+*First review: all commits on branch since diverging from main. Subsequent reviews: only commits since the last reviewed SHA.*
+
+---
+
 ## Prior Review  *(omit on first review)*
 
-> Previous report: `review/<branch>/<prior-YYYY-MM-DD-HHMM>.md`
+> Previous report: `review/<branch>/report-<prior-DDMMYYYYHHMMSS>.md`
 
 | # | Finding | Disposition |
 |---|---------|-------------|
@@ -168,9 +183,9 @@ For findings not covered by the user's response, reconcile against the current d
 
 ## Output File
 
-- Path: `review/<branch-name>/<YYYY-MM-DD-HHMM>.md` relative to the repo root
+- Path: `review/<branch-name>/report-<DDMMYYYYHHMMSS>.md` relative to the repo root
 - Sanitise `<branch-name>`: replace `/` with `-`, strip characters outside `[a-zA-Z0-9._-]`
-- Datetime: local time, 24-hour, no colon in time portion — e.g. `2026-06-02-1430`
+- Datetime: local time, 24-hour — e.g. `report-03062026143045.md`
 - After writing, print: `Report saved: review/<branch-name>/<filename>.md`
 
 ---
