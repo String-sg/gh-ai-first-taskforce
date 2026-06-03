@@ -1,0 +1,41 @@
+{
+  "skill_name": "code-review-report",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review my code changes. I'm on a feature branch, just finished a small feature — please review everything I've added since branching off main.",
+      "expected_output": "A markdown report saved to review/<branch>/report-<timestamp>.md. The report includes a Reviewed Commits table listing all commits since main, findings grouped by severity, and a What Looks Good section. No Prior Review section (first review).",
+      "files": [],
+      "assertions": [
+        "Report file is written to review/feat-code-review-report-skill/ with filename matching report-DDMMYYYYHHMMSS.md",
+        "Report contains a Reviewed Commits section with at least one SHA row",
+        "Report contains a What Looks Good section with at least one bullet",
+        "Report contains the Summary severity count table",
+        "Report does NOT contain a Prior Review section"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review my code changes.",
+      "expected_output": "The skill detects the current branch is main (a trunk branch) and stops immediately with a message telling the user to switch to a feature branch. No diff or analysis is run, no report file is written.",
+      "files": [],
+      "assertions": [
+        "Output contains the phrase 'feature branch' (guard message fired)",
+        "No report file is written to review/ directory",
+        "Output does NOT contain a severity table or Findings section"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review my changes again — I've pushed a couple more commits since the last review.",
+      "expected_output": "The skill finds the prior report, extracts last reviewed HEAD SHA (6fff67d), diffs only new commits since that SHA, shows prior findings for disposition, then produces a new report with a Prior Review section and Reviewed Commits showing only the new commit (30110b7).",
+      "files": [],
+      "assertions": [
+        "Report contains a Prior Review section referencing the prior report filename (report-02062026120000.md)",
+        "Reviewed Commits table contains 30110b7 but NOT 6fff67d",
+        "Prior Review table contains a disposition for the upstream diff finding",
+        "New report file is written with a different timestamp than report-02062026120000.md"
+      ]
+    }
+  ]
+}

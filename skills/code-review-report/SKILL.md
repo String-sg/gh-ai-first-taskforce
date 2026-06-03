@@ -23,23 +23,29 @@ Use `superpowers:requesting-code-review` instead when you need a fast pass durin
 
 1. Get branch name: `git rev-parse --abbrev-ref HEAD`
    - If the branch is `main`, `master`, `develop`, or `dev`, **stop immediately** and tell the user: "Code reviews are for feature branches only — switch to a feature branch and re-run."
-2. Check for prior reports: `ls review/<branch-name>/` (if the directory exists)
+   - Sanitise the branch name for use as a directory: replace `/` with `-`, strip characters outside `[a-zA-Z0-9._-]`. Use this sanitised name (`<safe-branch>`) in all subsequent steps.
+2. Check for prior reports: `ls review/<safe-branch>/` (if the directory exists)
    - If prior reports exist, read the most recent one to find the last reviewed HEAD SHA (recorded in the report's "Reviewed Commits" section), then **prompt the user about prior findings before doing anything else** (see Re-review below)
 3. Get the diff:
-   - **First review:** `git log main..HEAD --oneline` to list all branch commits, then `git diff $(git merge-base HEAD main)...HEAD` for the full diff. Record every commit SHA + message.
+   - **Detect the default branch:** try `main`, then `master`, then `develop` — use whichever resolves as a local ref (`git rev-parse --verify <name>`). If none resolve, stop and tell the user: "Cannot find a base branch — please run: `git fetch origin`".
+   - **First review:** `git log <base>..HEAD --oneline` to list all branch commits, then `git diff $(git merge-base HEAD <base>)...HEAD` for the full diff. Record every commit SHA + message.
    - **Subsequent review:** Use the last reviewed HEAD SHA from the prior report. Run `git log <last-sha>..HEAD --oneline` to list new commits only, then `git diff <last-sha>..HEAD` for the delta. Record only the new commits.
 4. Run all 7 review angles; collect candidates with `file`, `line`, `summary`, `failure_scenario`
 5. Deduplicate near-duplicates (same defect, same location → keep one)
 6. Verify each candidate — label as **CONFIRMED**, **PLAUSIBLE**, or **REFUTED**
    - PLAUSIBLE by default for: races, nil on rare-but-reachable paths, falsy-zero, off-by-one, regex missing anchor
    - REFUTED only when provably wrong — cite the exact line or invariant that rules it out
-7. Drop all REFUTED findings — silently; no mention of them in the report in any form
+6b. For each CONFIRMED or PLAUSIBLE finding, validate the suggestion before writing it:
+   - Check `package.json` (or equivalent — `go.mod`, `requirements.txt`, `Gemfile`) for the versions of any libraries referenced in the suggestion
+   - If the suggestion uses an API, method, or option that does not exist in the installed version, revise it to match — or note the required version upgrade explicitly
+   - If the suggestion is a shell command or script, mentally trace it: does it handle the failure modes described in the finding?
+7. Drop all REFUTED findings — see Rules › Refuted findings
 8. If re-review: reconcile remaining findings with prior dispositions (see Re-review below)
 9. Count total kept findings:
    - **< 10:** all findings get full entries including Suggestions
    - **≥ 10:** Critical and Important get full entries; Suggestions roll into a "Cleanup Notes" bullet list
 10. Group findings under `### Critical`, `### Important`, `### Suggestion` subsections — omit any subsection with no entries
-11. Write the report to `review/<branch-name>/report-<DDMMYYYYHHMMSS>.md` — create the directory if needed: `mkdir -p review/<branch-name>`
+11. Write the report to `review/<safe-branch>/report-<DDMMYYYYHHMMSS>.md` — create the directory if needed: `mkdir -p review/<safe-branch>`
 
 ---
 
@@ -91,8 +97,8 @@ For findings not covered by the user's response, reconcile against the current d
 ```markdown
 # Code Review — <branch> (<YYYY-MM-DD HH:MM>)
 
-> **File:** `review/<branch>/report-<DDMMYYYYHHMMSS>.md`
-> **Based on:** commits up to `<HEAD short SHA>` *(first review: full branch; subsequent: delta since `<prior HEAD SHA>`)*
+> **File:** `review/<safe-branch>/report-<DDMMYYYYHHMMSS>.md`
+> **Based on:** commits up to `<HEAD short SHA>` *(first review: full branch since `<base>`; subsequent: delta since `<prior HEAD SHA>`)*
 
 ## Summary
 
@@ -112,13 +118,13 @@ For findings not covered by the user's response, reconcile against the current d
 |-------------|---------|
 | `abc1234` | feat: add X |
 
-*First review: all commits on branch since diverging from main. Subsequent reviews: only commits since the last reviewed SHA.*
+*First review: all commits on branch since diverging from the default branch. Subsequent reviews: only commits since the last reviewed SHA. The bottom row of this table is the HEAD SHA — it is used as the delta anchor for the next review.*
 
 ---
 
 ## Prior Review  *(omit on first review)*
 
-> Previous report: `review/<branch>/report-<prior-DDMMYYYYHHMMSS>.md`
+> Previous report: `review/<safe-branch>/report-<prior-DDMMYYYYHHMMSS>.md`
 
 | # | Finding | Disposition |
 |---|---------|-------------|
@@ -183,10 +189,9 @@ For findings not covered by the user's response, reconcile against the current d
 
 ## Output File
 
-- Path: `review/<branch-name>/report-<DDMMYYYYHHMMSS>.md` relative to the repo root
-- Sanitise `<branch-name>`: replace `/` with `-`, strip characters outside `[a-zA-Z0-9._-]`
+- Path: `review/<safe-branch>/report-<DDMMYYYYHHMMSS>.md` relative to the repo root (`<safe-branch>` is defined in step 1)
 - Datetime: local time, 24-hour — e.g. `report-03062026143045.md`
-- After writing, print: `Report saved: review/<branch-name>/<filename>.md`
+- After writing, print: `Report saved: review/<safe-branch>/<filename>.md`
 
 ---
 
