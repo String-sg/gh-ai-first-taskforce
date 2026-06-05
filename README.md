@@ -144,6 +144,21 @@ More stacks will be added as trials are completed. To contribute a new stack ski
 
 ## Contributing
 
+### Setting up git hooks
+
+This repo uses [Lefthook](https://github.com/evilmartians/lefthook) to manage git hooks. Run once after cloning:
+
+```sh
+brew install lefthook gitleaks
+lefthook install
+```
+
+This activates:
+- **pre-commit** — scans staged changes for secrets via gitleaks
+- **pre-push** — blocks direct pushes to `main`; open a pull request instead
+
+### Guidelines
+
 - Completed trials go in `trials/<project-name>/`.
 - When a gap pattern appears in more than one trial, extract it into `templates/CLAUDE.md` as a rule.
 - Keep templates generalized — strip project-specific names, commit hashes, and org-specific tooling before committing to `templates/`.

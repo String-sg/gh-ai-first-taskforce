@@ -1,0 +1,10 @@
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+# To allowlist a false positive, add an entry below:
+# [allowlist]
+# description = "describe what is being allowed"
+# paths = ['''path/to/false-positive-file''']
+# regexes = ['''EXAMPLE_PLACEHOLDER_[A-Z0-9]+''']

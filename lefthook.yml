@@ -1,0 +1,9 @@
+pre-commit:
+  commands:
+    gitleaks:
+      run: gitleaks protect --staged --config .gitleaks.toml
+
+pre-push:
+  commands:
+    block-main:
+      run: sh hooks/pre-push

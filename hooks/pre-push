@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if echo "$remote_ref" | grep -qE '^refs/heads/(main|master)$'; then
+    echo "Direct push to ${remote_ref} is not allowed. Open a pull request instead."
+    exit 1
+  fi
+done
