@@ -1,9 +1,8 @@
 #!/bin/sh
 set -e
 
-while read local_ref local_sha remote_ref remote_sha; do
-  if echo "$remote_ref" | grep -qE '^refs/heads/(main|master)$'; then
-    echo "Direct push to ${remote_ref} is not allowed. Open a pull request instead."
-    exit 1
-  fi
-done
+BRANCH=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+if [ -n "$BRANCH" ] && echo "$BRANCH" | grep -qE '^(main|master)$'; then
+  echo "Direct push to '$BRANCH' is not allowed. Open a pull request instead."
+  exit 1
+fi
