@@ -1,5 +1,5 @@
 ---
-name: create-skills
+name: create-issue
 description: Use when you need to create a well-structured GitHub issue with complete author and implementer sections for a coding agent to implement.
 ---
 
