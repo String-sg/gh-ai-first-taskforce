@@ -1,4 +1,7 @@
-Implement a GitHub issue in this repository. The argument is either an issue number or a pasted markdown body: $ARGUMENTS
+---
+name: implement-issue
+description: Use when you need to Implement a GitHub issue in this repository. The argument is either an issue number or a pasted markdown body: $ARGUMENTS
+---
 
 ## Step 1: Fetch and read the issue
 
