@@ -9,7 +9,7 @@ Knowledge repository for the AI-First Taskforce. This repo collects best practic
 Install as a `gh` CLI extension:
 
 ```sh
-gh extension install transformteamsg/ai-first-taskforce
+gh extension install transformteamsg/gh-ai-first-taskforce
 ```
 
 Then run setup to install the taskforce's Claude Code skills into `~/.claude/skills/`:
