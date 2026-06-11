@@ -1,5 +1,5 @@
 ---
-name: git-hooks-setup
+name: aif-git-hooks-setup
 description: Use when setting up pre-commit and pre-push git hooks on a JS/TS project, auditing whether an existing hook setup meets minimum requirements, or adding new mandatory checks to existing hooks. Triggered by "set up commit hooks", "add pre-commit checks", "wire up pre-push tests", "check if our hooks are good enough", or "add a new gate before push".
 ---
 

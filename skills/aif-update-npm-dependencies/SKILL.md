@@ -1,5 +1,5 @@
 ---
-name: updating-vulnerable-dependencies
+name: aif-update-npm-dependencies
 description: Use when a dependency audit flags vulnerable packages in a JavaScript/TypeScript project, when CI fails a security check, or when preparing a branch for merge and security hygiene is required. Works across npm, pnpm, Yarn (classic and berry), and Bun — detects the package manager automatically. Trigger this whenever someone mentions "audit", "vulnerable dependency", "CVE in a package", "npm audit failing", "supply-chain risk", or "bump the insecure transitive dep", even if they don't name a package manager. Applies a 7-day release cooldown to avoid pulling in freshly-published malicious versions.
 ---
 

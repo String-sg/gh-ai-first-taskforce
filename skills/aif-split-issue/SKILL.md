@@ -1,5 +1,5 @@
 ---
-name: split-issue
+name: aif-split-issue
 description: Use when you need to decompose a GitHub issue numbered $ARGUMENTS into atomic child issues, each small enough for a coding agent to implement in a single PR.
 ---
 

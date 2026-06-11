@@ -9,6 +9,7 @@ case "$COMMAND" in
   setup)
     SKILLS_SRC="$EXTENSION_DIR/skills"
     SKILLS_DEST="$HOME/.claude/skills"
+    MANIFEST="$SKILLS_DEST/.aif-installed"
 
     if [ ! -d "$SKILLS_SRC" ]; then
       echo "ERROR: No skills directory found at $SKILLS_SRC" >&2
@@ -17,11 +18,37 @@ case "$COMMAND" in
 
     mkdir -p "$SKILLS_DEST"
 
+    if [ -f "$MANIFEST" ]; then
+      # Remove previously installed skills to avoid stale copies after renames
+      while IFS= read -r old_skill; do
+        [ -n "$old_skill" ] || continue
+        if [ -d "$SKILLS_DEST/$old_skill" ]; then
+          rm -rf "$SKILLS_DEST/$old_skill"
+          echo "  removed (stale): $old_skill"
+        fi
+      done < "$MANIFEST"
+    else
+      # No manifest means a pre-manifest install — remove unprefixed copies of
+      # any skill we are about to install (e.g. aif-create-issue → create-issue)
+      for skill_dir in "$SKILLS_SRC"/*/; do
+        [ -d "$skill_dir" ] || continue
+        skill_name="$(basename "$skill_dir")"
+        unprefixed="${skill_name#aif-}"
+        if [ "$unprefixed" != "$skill_name" ] && [ -d "$SKILLS_DEST/$unprefixed" ]; then
+          rm -rf "$SKILLS_DEST/$unprefixed"
+          echo "  removed (pre-manifest legacy): $unprefixed"
+        fi
+      done
+    fi
+
+    : > "$MANIFEST"
+
     installed=0
     for skill_dir in "$SKILLS_SRC"/*/; do
       [ -d "$skill_dir" ] || continue
       skill_name="$(basename "$skill_dir")"
       cp -r "$skill_dir" "$SKILLS_DEST/$skill_name"
+      echo "$skill_name" >> "$MANIFEST"
       echo "  installed: $skill_name"
       installed=$((installed + 1))
     done

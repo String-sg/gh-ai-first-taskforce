@@ -1,5 +1,5 @@
 ---
-name: code-review-report
+name: aif-code-review-report
 description: Use when asked to review code changes and produce a written feedback report with code snippets and suggestions. Triggers on "review this", "give me feedback on", "review my changes", or any request for a review output document.
 ---
 
