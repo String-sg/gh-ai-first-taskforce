@@ -1,0 +1,37 @@
+{
+  "skill_name": "aif-lint-setup",
+  "evals": [
+    {
+      "id": 1,
+      "name": "eval-greenfield-ts",
+      "prompt": "I have a new TypeScript React project with no linting or formatting set up. I want oxlint for linting and oxfmt for formatting.",
+      "expected_output": "Creates .oxlintrc.json and .oxfmtrc.json with correct default configs, adds lint and format scripts to package.json",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "eval-partial-add-oxfmt",
+      "prompt": "Our JS/TS project already has oxlint configured. We want to add oxfmt for formatting.",
+      "expected_output": "Detects existing .oxlintrc.json and oxlint script, adds only .oxfmtrc.json and format script without touching existing lint setup",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "eval-multi-ecosystem-go-shell",
+      "prompt": "Set up linting for our Go server and our shell deployment scripts.",
+      "expected_output": "Creates .golangci.yaml with formatters block, Makefile with tools and lint targets, .shellcheckrc",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "name": "eval-teacher-workspace",
+      "prompt": "Set up oxlint and oxfmt for the JS/TS workspace and golangci-lint for the Go server. We use pnpm.",
+      "expected_output": "Creates .oxlintrc.json, .oxfmtrc.json, .golangci.yaml, Makefile — all matching the skill's default configs. package.json gets lint and format scripts.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}
