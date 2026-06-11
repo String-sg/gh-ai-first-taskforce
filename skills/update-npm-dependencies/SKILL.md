@@ -1,9 +1,9 @@
 ---
 name: updating-vulnerable-dependencies
-description: Use when a dependency audit flags vulnerable packages in a JavaScript/TypeScript project, when CI fails a security check, or when preparing a branch for merge and security hygiene is required. Works across npm, pnpm, Yarn (classic and berry), and Bun — detects the package manager automatically. Trigger this whenever someone mentions "audit", "vulnerable dependency", "CVE in a package", "npm audit failing", "supply-chain risk", or "bump the insecure transitive dep", even if they don't name a package manager. Applies a 7-day release cooldown to avoid pulling in freshly-published malicious versions.
+description: Use when a dependency audit flags vulnerable packages in a JavaScript/TypeScript project, when CI fails a security check, or when preparing a branch for merge and security hygiene is required. Works across npm, pnpm, Yarn berry, and Bun — detects the package manager automatically. Trigger this whenever someone mentions "audit", "vulnerable dependency", "CVE in a package", "npm audit failing", "supply-chain risk", or "bump the insecure transitive dep", even if they don't name a package manager. Applies a 7-day release cooldown to avoid pulling in freshly-published malicious versions.
 ---
 
-# Updating Vulnerable Dependencies (npm / pnpm / Yarn / Bun)
+# Updating Vulnerable Dependencies (npm / pnpm / Yarn berry / Bun)
 
 ## Overview
 
@@ -57,36 +57,108 @@ If you don't have `node` available, inspect `package.json` by reading it: if the
 
 If **multiple** lockfiles exist, the `packageManager` field wins; if there's no such field, prefer the lockfile that matches the most recently modified one and flag the ambiguity to the user.
 
-**Yarn classic vs. berry** — these have different commands (see the table). Detect the version:
+### Set the release-age guardrail before proceeding
+
+Every supported package manager can enforce the 7-day cooldown natively so that every future install — not just this one — refuses freshly-published versions. **Check the installed version first** — the guardrail setting is only available from a minimum version. If the project is below the minimum, tell the user the installed version and recommend they upgrade to unlock native protection, but do not run the upgrade yourself. Then check and set the config if supported.
+
+The config file, key, value unit, and minimum required version differ by package manager:
+
+**npm (≥ 11.10.0)** — `.npmrc`, value in **days**:
 
 ```bash
-yarn --version    # >= 2.0.0 → berry (Yarn 2+).  1.x → classic.
+npm_ver=$(npm --version 2>/dev/null)
+# Require major > 11, or major == 11 and minor >= 10
+npm_major=$(echo "$npm_ver" | cut -d. -f1)
+npm_minor=$(echo "$npm_ver" | cut -d. -f2)
+if [ "$npm_major" -gt 11 ] || { [ "$npm_major" -eq 11 ] && [ "$npm_minor" -ge 10 ]; }; then
+  if grep -qs 'min-release-age' .npmrc 2>/dev/null; then
+    echo "min-release-age already set — nothing to do."
+  else
+    echo 'min-release-age=7' >> .npmrc
+    echo "Added min-release-age=7 to .npmrc."
+  fi
+else
+  echo "npm $npm_ver detected. Upgrade to npm ≥ 11.10.0 to enable the native release-age guardrail (run: npm install -g npm@latest). Skipping guardrail setup."
+fi
 ```
 
-A `.yarnrc.yml` file (instead of `.yarnrc`) or a `yarn.lock` that begins with `__metadata:` also indicates berry.
+**pnpm (≥ 10.16.0)** — `pnpm-workspace.yaml`, value in **minutes**:
+
+```bash
+pnpm_ver=$(pnpm --version 2>/dev/null)
+pnpm_major=$(echo "$pnpm_ver" | cut -d. -f1)
+pnpm_minor=$(echo "$pnpm_ver" | cut -d. -f2)
+if [ "$pnpm_major" -gt 10 ] || { [ "$pnpm_major" -eq 10 ] && [ "$pnpm_minor" -ge 16 ]; }; then
+  if grep -qs 'minimumReleaseAge' pnpm-workspace.yaml 2>/dev/null; then
+    echo "minimumReleaseAge already set — nothing to do."
+  else
+    echo 'minimumReleaseAge: 10080   # 7 days in minutes' >> pnpm-workspace.yaml
+    echo "Added minimumReleaseAge to pnpm-workspace.yaml."
+  fi
+else
+  echo "pnpm $pnpm_ver detected. Upgrade to pnpm ≥ 10.16.0 to enable the native release-age guardrail (run: pnpm self-update). Skipping guardrail setup."
+fi
+```
+
+**Yarn berry (≥ 4.10.0)** — `.yarnrc.yml`, value in **minutes** (10080 = 7 days):
+
+```bash
+yarn_ver=$(yarn --version 2>/dev/null)
+yarn_major=$(echo "$yarn_ver" | cut -d. -f1)
+yarn_minor=$(echo "$yarn_ver" | cut -d. -f2)
+if [ "$yarn_major" -gt 4 ] || { [ "$yarn_major" -eq 4 ] && [ "$yarn_minor" -ge 10 ]; }; then
+  if grep -qs 'npmMinimalAgeGate' .yarnrc.yml 2>/dev/null; then
+    echo "npmMinimalAgeGate already set — nothing to do."
+  else
+    echo 'npmMinimalAgeGate: 10080   # 7 days in minutes' >> .yarnrc.yml
+    echo "Added npmMinimalAgeGate to .yarnrc.yml."
+  fi
+else
+  echo "Yarn $yarn_ver detected. Upgrade to Yarn ≥ 4.10.0 to enable the native release-age guardrail (run: yarn set version stable). Skipping guardrail setup."
+fi
+```
+
+**Bun (≥ 1.3.0)** — `bunfig.toml`, value in **seconds**:
+
+```bash
+bun_ver=$(bun --version 2>/dev/null)
+bun_major=$(echo "$bun_ver" | cut -d. -f1)
+bun_minor=$(echo "$bun_ver" | cut -d. -f2)
+if [ "$bun_major" -gt 1 ] || { [ "$bun_major" -eq 1 ] && [ "$bun_minor" -ge 3 ]; }; then
+  if grep -qs 'minimumReleaseAge' bunfig.toml 2>/dev/null; then
+    echo "minimumReleaseAge already set — nothing to do."
+  else
+    printf '\n[install]\nminimumReleaseAge = 604800   # 7 days in seconds\n' >> bunfig.toml
+    echo "Added minimumReleaseAge to bunfig.toml."
+  fi
+else
+  echo "Bun $bun_ver detected. Upgrade to Bun ≥ 1.3.0 to enable the native release-age guardrail (run: bun upgrade). Skipping guardrail setup."
+fi
+```
+
+After running the relevant check, tell the user which file was updated (or which version upgrade is needed) and that the config file should be committed alongside the vulnerability fix. Then continue with the audit.
 
 ## Command reference
 
 Use the column for the package manager you detected. `<pkg>` is the vulnerable package; `<v>` is a safe version; `<parent>` is the top-level dependency that pulls in `<pkg>`.
 
-| Logical step                        | npm                                       | pnpm                                  | Yarn classic (1.x)              | Yarn berry (2+)                        | Bun                                |
-| ----------------------------------- | ----------------------------------------- | ------------------------------------- | ------------------------------- | -------------------------------------- | ---------------------------------- |
-| **Audit**                           | `npm audit`                               | `pnpm audit`                          | `yarn audit`                    | `yarn npm audit --all --recursive`     | `bun audit`                        |
-| **Show dependency chain**           | `npm why <pkg>` (or `npm ls <pkg>`)       | `pnpm why <pkg>`                      | `yarn why <pkg>`                | `yarn why <pkg>`                       | `bun why <pkg>` (or `bun pm ls`)   |
-| **Update all (within ranges)**      | `npm update`                              | `pnpm update`                         | `yarn upgrade`                  | `yarn up "*"`                          | `bun update`                       |
-| **Update one (within range)**       | `npm update <pkg>`                        | `pnpm update <pkg>`                   | `yarn upgrade <pkg>`            | `yarn up <pkg>`                        | `bun update <pkg>`                 |
-| **Install an exact safe version**   | `npm install <pkg>@<v>`                   | `pnpm add <pkg>@<v>`                  | `yarn add <pkg>@<v>`            | `yarn add <pkg>@<v>`                   | `bun add <pkg>@<v>`                |
-| **List published versions**         | `npm view <pkg> versions --json`          | `pnpm info <pkg> versions --json`     | `yarn info <pkg> --json`        | `yarn npm info <pkg> --json`           | `bun pm view <pkg> versions`       |
-| **Check dist-tags (latest/next)**   | `npm view <pkg> dist-tags`                | `pnpm info <pkg> dist-tags`           | `yarn info <pkg> dist-tags`     | `yarn npm info <pkg> --json`           | `bun pm view <pkg>`                |
-| **Check a version's publish date**  | `npm view <pkg> time --json`              | `pnpm info <pkg> time --json`         | `yarn info <pkg> time`          | `npm view <pkg> time --json`           | `npm view <pkg> time --json`       |
-| **Force fresh lockfile resolution** | `rm package-lock.json && npm install`     | `pnpm install --force`                | `yarn install --force`          | `rm yarn.lock && yarn install`         | `bun install --force`              |
-| **Run tests**                       | `npm test`                                | `pnpm test`                           | `yarn test`                     | `yarn test`                            | `bun test`                         |
-| **Overrides field in package.json** | `overrides`                               | `pnpm.overrides`                      | `resolutions`                   | `resolutions`                          | `overrides`                        |
+| Logical step                        | npm                                       | pnpm                                  | Yarn berry (≥ 4.10.0)                  | Bun                                |
+| ----------------------------------- | ----------------------------------------- | ------------------------------------- | -------------------------------------- | ---------------------------------- |
+| **Audit**                           | `npm audit`                               | `pnpm audit`                          | `yarn npm audit --all --recursive`     | `bun audit`                        |
+| **Show dependency chain**           | `npm why <pkg>` (or `npm ls <pkg>`)       | `pnpm why <pkg>`                      | `yarn why <pkg>`                       | `bun why <pkg>` (or `bun pm ls`)   |
+| **Update all (within ranges)**      | `npm update`                              | `pnpm update`                         | `yarn up "*"`                          | `bun update`                       |
+| **Update one (within range)**       | `npm update <pkg>`                        | `pnpm update <pkg>`                   | `yarn up <pkg>`                        | `bun update <pkg>`                 |
+| **Install an exact safe version**   | `npm install <pkg>@<v>`                   | `pnpm add <pkg>@<v>`                  | `yarn add <pkg>@<v>`                   | `bun add <pkg>@<v>`                |
+| **List published versions**         | `npm view <pkg> versions --json`          | `pnpm info <pkg> versions --json`     | `yarn npm info <pkg> --json`           | `bun pm view <pkg> versions`       |
+| **Check dist-tags (latest/next)**   | `npm view <pkg> dist-tags`                | `pnpm info <pkg> dist-tags`           | `yarn npm info <pkg> --json`           | `bun pm view <pkg>`                |
+| **Check a version's publish date**  | `npm view <pkg> time --json`              | `pnpm info <pkg> time --json`         | `npm view <pkg> time --json`           | `npm view <pkg> time --json`       |
+| **Force fresh lockfile resolution** | `rm package-lock.json && npm install`     | `pnpm install --force`                | `rm yarn.lock && yarn install`         | `bun install --force`              |
+| **Run tests**                       | `npm test`                                | `pnpm test`                           | `yarn test`                            | `bun test`                         |
+| **Overrides field in package.json** | `overrides`                               | `pnpm.overrides`                      | `resolutions`                          | `overrides`                        |
 
 Notes:
 
-- **Bun's audit** (`bun audit`) and `bun why` require a recent Bun (≈ v1.2+). On older Bun, there is no native audit — install once with `bun install` and run `npm audit` against the resulting tree, or upgrade Bun.
-- **Yarn classic `yarn audit`** is read-only (there is no safe `--fix`). Resolve via `yarn upgrade` or `resolutions`.
+- **Bun's audit** (`bun audit`) and `bun why` require Bun ≥ 1.3. On older Bun, upgrade first (`bun upgrade`) or run `npm audit` against the installed tree as a fallback.
 - Command flags drift between versions. If a command isn't recognized, check `<pm> <subcommand> --help` rather than guessing.
 
 ## Decision Flow
@@ -157,14 +229,7 @@ npm view <pkg> time --json     # look up your candidate version's date in the ou
 - If a patched version **≥ 7 days old** exists, use it.
 - If the **only** version that fixes the vulnerability was published in the last 7 days, **stop and ask a human.** Lay out the tradeoff explicitly: staying on the known-vulnerable version vs. installing an un-aged release that hasn't had time to be flagged. Do not silently pick either.
 
-**pnpm enforces this natively.** pnpm (≥ 10.16) supports a `minimumReleaseAge` setting (minutes) in `pnpm-workspace.yaml`, which makes pnpm refuse to install versions younger than the threshold across the whole project — a durable guardrail beyond this one fix:
-
-```yaml
-# pnpm-workspace.yaml
-minimumReleaseAge: 10080   # 7 days, in minutes
-```
-
-For npm, Yarn, and Bun, there's no equally universal native setting — rely on the manual publish-date check above (some Bun versions expose a `minimumReleaseAge` in `bunfig.toml`; check your version).
+**npm, pnpm, Yarn berry, and Bun projects:** the guardrail configured in Step 0 means the package manager will enforce this automatically going forward (provided the installed version meets the minimum). If Step 0 flagged an upgrade needed, this manual check is the only protection until the upgrade is done.
 
 ## Step 4: Fix (escalate in order)
 
@@ -216,7 +281,7 @@ Use only when the parent **cannot** be upgraded (abandoned, API incompatibility,
 }
 ```
 
-**Yarn (classic and berry)** — `resolutions`:
+**Yarn berry** — `resolutions`:
 
 ```json
 {
@@ -278,7 +343,7 @@ Keeping stale overrides masks future vulnerabilities and makes dependency trees 
 | Skipping tests after the update                    | A clean audit doesn't mean nothing broke — run the full test suite before committing   |
 | Adding transitive deps as direct devDependencies   | Use overrides/`resolutions` instead; don't pollute devDependencies                     |
 | Using `>=version` in overrides                     | Use `^version` (caret) so resolution stays within the safe major, not any future major |
-| Putting `overrides` where the PM expects `resolutions` (or vice versa) | Match the field to the package manager — npm/Bun use `overrides`, pnpm uses `pnpm.overrides`, Yarn uses `resolutions` |
+| Putting `overrides` where the PM expects `resolutions` (or vice versa) | Match the field to the package manager — npm/Bun use `overrides`, pnpm uses `pnpm.overrides`, Yarn berry uses `resolutions` |
 | Leaving overrides in place permanently             | Check after each upgrade cycle whether the parent now resolves safely on its own       |
 | Overriding before confirming a safe version exists | Check published versions / dist-tags first to confirm the patched release exists       |
 | Installing a version published in the last 7 days  | Apply the cooldown — prefer the oldest patched release; if only a fresh version fixes it, ask a human before installing |

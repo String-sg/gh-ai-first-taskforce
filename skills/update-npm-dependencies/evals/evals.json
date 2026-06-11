@@ -88,6 +88,106 @@
         {"text": "Runs npm audit after the fix to verify the vulnerability is resolved", "passed": null, "evidence": ""},
         {"text": "Detects there is no test script and explicitly flags this (does NOT silently skip or pretend tests passed)", "passed": null, "evidence": ""}
       ]
+    },
+    {
+      "id": 7,
+      "name": "pnpm-set-min-release-age",
+      "fixture": "evals/projects/pnpm-no-workspace-yaml",
+      "prompt": "Our pnpm-based API service has a high-severity ReDoS in fast-xml-parser 4.2.5. 4.4.1 was released 3 months ago. Please fix it.",
+      "expected_output": "Agent detects pnpm, finds no pnpm-workspace.yaml exists (or finds one without minimumReleaseAge), creates/updates pnpm-workspace.yaml with minimumReleaseAge: 10080, tells the user to commit this file, then proceeds with the audit and fix.",
+      "assertions": [
+        {"text": "Detects pnpm as the package manager (from pnpm-lock.yaml)", "passed": null, "evidence": ""},
+        {"text": "Checks for minimumReleaseAge in pnpm-workspace.yaml before auditing", "passed": null, "evidence": ""},
+        {"text": "Adds minimumReleaseAge: 10080 to pnpm-workspace.yaml (creates the file if absent)", "passed": null, "evidence": ""},
+        {"text": "Tells the user pnpm-workspace.yaml should be committed alongside the fix", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "pnpm-already-has-guardrail",
+      "fixture": "evals/projects/pnpm-has-release-age",
+      "prompt": "CI flagged fast-xml-parser 4.2.5 as vulnerable (ReDoS). The safe version is 4.4.1, out for 3 months. Please patch this pnpm project.",
+      "expected_output": "Agent detects pnpm, finds minimumReleaseAge already set in pnpm-workspace.yaml, acknowledges it is already configured and does NOT add a duplicate entry, then proceeds with the audit and fix.",
+      "assertions": [
+        {"text": "Detects pnpm as the package manager", "passed": null, "evidence": ""},
+        {"text": "Finds minimumReleaseAge already set and acknowledges it without adding a duplicate", "passed": null, "evidence": ""},
+        {"text": "Does NOT write a second minimumReleaseAge entry to pnpm-workspace.yaml", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "yarn-berry-set-min-age",
+      "fixture": "evals/projects/yarn-berry",
+      "prompt": "We've got a security advisory for node-fetch (SSRF) pulled in transitively by this Yarn workspace. Can you sort out the vulnerability and make sure we have proper supply-chain guardrails in place?",
+      "expected_output": "Agent identifies Yarn berry, finds npmMinimalAgeGate is not set in .yarnrc.yml, adds 'npmMinimalAgeGate: \"1w\"' to .yarnrc.yml, tells the user to commit it, then proceeds with the audit using Yarn-appropriate commands.",
+      "assertions": [
+        {"text": "Identifies the package manager as Yarn berry (v2+)", "passed": null, "evidence": ""},
+        {"text": "Checks .yarnrc.yml for npmMinimalAgeGate before auditing", "passed": null, "evidence": ""},
+        {"text": "Adds npmMinimalAgeGate: \"1w\" to .yarnrc.yml", "passed": null, "evidence": ""},
+        {"text": "Tells the user .yarnrc.yml should be committed alongside the fix", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "yarn-berry-already-has-guardrail",
+      "fixture": "evals/projects/yarn-berry-has-min-age",
+      "prompt": "fast-xml-parser 4.2.5 has a ReDoS vuln in our frontend Yarn workspace. 4.4.1 is the fix and it has been out for months. Please patch it.",
+      "expected_output": "Agent identifies Yarn berry, finds npmMinimalAgeGate already set in .yarnrc.yml, acknowledges it without adding a duplicate, then proceeds with the audit and fix using Yarn-appropriate commands.",
+      "assertions": [
+        {"text": "Identifies the package manager as Yarn berry (v2+)", "passed": null, "evidence": ""},
+        {"text": "Finds npmMinimalAgeGate already set and acknowledges it without adding a duplicate", "passed": null, "evidence": ""},
+        {"text": "Does NOT write a second npmMinimalAgeGate entry to .yarnrc.yml", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "bun-set-min-release-age",
+      "fixture": "evals/projects/bun-app",
+      "prompt": "Our Bun-based edge API has a vulnerability in a transitive package under hono. Please fix the dep and set up whatever supply-chain guardrails Bun supports.",
+      "expected_output": "Agent identifies Bun, finds no bunfig.toml (or one without minimumReleaseAge), creates/updates bunfig.toml with minimumReleaseAge = 604800 under [install], tells the user to commit it, then proceeds with the Bun audit workflow.",
+      "assertions": [
+        {"text": "Identifies the package manager as Bun (from bun.lock)", "passed": null, "evidence": ""},
+        {"text": "Checks bunfig.toml for minimumReleaseAge before auditing", "passed": null, "evidence": ""},
+        {"text": "Adds minimumReleaseAge = 604800 under [install] in bunfig.toml (creates the file if absent)", "passed": null, "evidence": ""},
+        {"text": "Tells the user bunfig.toml should be committed alongside the fix", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "bun-already-has-guardrail",
+      "fixture": "evals/projects/bun-has-release-age",
+      "prompt": "fast-xml-parser has a known vuln in this Bun project. Can you patch it?",
+      "expected_output": "Agent identifies Bun, finds minimumReleaseAge already set in bunfig.toml, acknowledges it without duplicating, then proceeds with the Bun audit workflow.",
+      "assertions": [
+        {"text": "Identifies the package manager as Bun", "passed": null, "evidence": ""},
+        {"text": "Finds minimumReleaseAge already set in bunfig.toml and acknowledges it without adding a duplicate", "passed": null, "evidence": ""},
+        {"text": "Does NOT write a second minimumReleaseAge entry to bunfig.toml", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "npm-set-min-release-age",
+      "fixture": "evals/projects/npm-no-min-release-age",
+      "prompt": "Our npm API project has a ReDoS in fast-xml-parser 4.2.5. 4.4.1 is the fix, out 3 months. Please patch it and set up any supply-chain guardrails npm supports.",
+      "expected_output": "Agent detects npm (≥ 11.10), finds no min-release-age in .npmrc (or no .npmrc), adds min-release-age=7 to .npmrc, tells the user to commit it, then proceeds with the audit and fix.",
+      "assertions": [
+        {"text": "Identifies the package manager as npm", "passed": null, "evidence": ""},
+        {"text": "Checks .npmrc for min-release-age before auditing", "passed": null, "evidence": ""},
+        {"text": "Adds min-release-age=7 to .npmrc (creates the file if absent)", "passed": null, "evidence": ""},
+        {"text": "Tells the user .npmrc should be committed alongside the fix", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "npm-already-has-guardrail",
+      "fixture": "evals/projects/npm-has-min-release-age",
+      "prompt": "fast-xml-parser 4.2.5 has a known ReDoS in our npm project. The safe version is 4.4.1. Please fix it.",
+      "expected_output": "Agent detects npm, finds min-release-age already set in .npmrc, acknowledges it without adding a duplicate, then proceeds with the audit and fix.",
+      "assertions": [
+        {"text": "Identifies the package manager as npm", "passed": null, "evidence": ""},
+        {"text": "Finds min-release-age already set in .npmrc and acknowledges it without adding a duplicate", "passed": null, "evidence": ""},
+        {"text": "Does NOT write a second min-release-age entry to .npmrc", "passed": null, "evidence": ""}
+      ]
     }
   ]
 }
