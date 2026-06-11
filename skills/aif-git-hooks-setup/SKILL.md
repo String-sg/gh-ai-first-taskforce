@@ -1,50 +1,126 @@
 ---
 name: aif-git-hooks-setup
-description: Use when setting up pre-commit and pre-push git hooks on a JS/TS project, auditing whether an existing hook setup meets minimum requirements, or adding new mandatory checks to existing hooks. Triggered by "set up commit hooks", "add pre-commit checks", "wire up pre-push tests", "check if our hooks are good enough", or "add a new gate before push".
+description: Use when setting up pre-commit and pre-push git hooks on any project (JS/TS, Go, shell scripts, or mixed), auditing whether an existing hook setup meets minimum requirements, or adding new mandatory checks to existing hooks. Triggered by "set up commit hooks", "add pre-commit checks", "wire up pre-push tests", "check if our hooks are good enough", or "add a new gate before push". Supports Husky (JS/TS only) and Lefthook (language-agnostic). This skill wires hooks around whatever linters are already configured — if no linters are set up yet, point the user to aif-lint-setup first.
 ---
 
 # Git Hooks Setup
 
 ## Overview
 
-Installs Husky-based git hooks with idempotent checks.
+Installs git hooks using either **Husky** (shell scripts + lint-staged) or **Lefthook** (YAML config with built-in staged-file filtering), enforcing whatever quality tools are already configured in the repo.
 
-**Pre-commit minimum:** lint-staged (ESLint + Prettier on staged files), TypeScript type check (full project), gitleaks secrets scan
-**Pre-push minimum:** full test suite
-
-Supported package managers: npm, yarn, pnpm, bun.
+This skill **does not install or configure linters or formatters** — it detects what's already there and wires the hooks accordingly. If linters aren't configured yet, use `aif-lint-setup` first, then return here.
 
 ---
 
 ## Phase 0: Assess
 
-```mermaid
-flowchart TD
-    A{package.json present?} -->|no| B[Stop: not a JS/TS project]
-    A -->|yes| C{.husky/pre-commit present?}
-    C -->|no| D[Path A: Fresh Install]
-    C -->|yes| E[Path B: Audit existing setup]
+**Step 1 — Detect the project type.** Look for these signals:
+
+- JS/TS: `package.json` present, or `.ts`/`.tsx`/`.js`/`.jsx` files tracked
+- Go: `go.mod` present
+- Shell: `.sh` files present, or files with a `#!/bin/bash` / `#!/bin/sh` shebang
+
+If no signals are found, stop — there is nothing to hook.
+
+**Step 2 — Detect the existing hook manager.** Check:
+
+- `lefthook.yml` present → go to **Path B-Lefthook: Audit**
+- `.husky/` directory present → go to **Path B-Husky: Audit**
+- Neither present → go to **Path A: Fresh Install**
+
+**Step 3 — For fresh installs, choose a hook manager.** Ask the user if they have no preference:
+
+- **Husky** — shell scripts in `.husky/`, staged-file filtering via lint-staged. Requires Node.js; only suitable for JS/TS projects.
+- **Lefthook** — single `lefthook.yml`, staged-file filtering built-in. Language-agnostic Go binary; works for any project type.
+
+If the repo has no `package.json` (Go, shell, or other), Husky is not an option — proceed with Lefthook only without asking.
+
+---
+
+## Phase 1: Detect — runs before any path
+
+Gather this information from the repo before writing anything.
+
+### Package manager (JS/TS projects only)
+
+| Lockfile | Package manager |
+|----------|----------------|
+| `bun.lock` / `bun.lockb` | bun |
+| `pnpm-lock.yaml` | pnpm |
+| `yarn.lock` | yarn |
+| `package-lock.json` | npm |
+| none | ask the user |
+
+### Node version manager (JS/TS projects only)
+
+| Signal | Manager |
+|--------|---------|
+| `.nvmrc` / `.node-version` | nvm |
+| `.tool-versions` | asdf |
+| `volta` key in `package.json` | volta |
+| none found | ask the user |
+
+### Linters and formatters already configured
+
+Check for config files and installed tools. These determine what runs on staged files:
+
+**JS/TS**
+
+| Tool | Detection signal | Command |
+|------|-----------------|---------|
+| ESLint | `eslint.config.js`, `.eslintrc*` present | `eslint --fix` |
+| oxlint | `.oxlintrc.json` present, or `oxlint` in devDeps | `oxlint --fix` |
+| Biome | `biome.json` present | `biome check --fix` |
+| Prettier | `.prettierrc*` or `prettier` key in package.json | `prettier --write` |
+| oxfmt | `.oxfmtrc.json` present, or `oxfmt` in devDeps | `oxfmt --write` |
+
+**Go**
+
+| Tool | Detection signal | Command |
+|------|-----------------|---------|
+| golangci-lint | `.golangci.yaml` / `.golangci.yml` present | `golangci-lint run` (or `make lint` if a `lint` target is defined in `Makefile`) |
+
+**Shell**
+
+| Tool | Detection signal | Command |
+|------|-----------------|---------|
+| shellcheck | `.shellcheckrc` present, or `shellcheck` in PATH | `shellcheck <files>` |
+
+If **no linters or formatters are found at all**: tell the user and recommend running `aif-lint-setup` first. Ask whether they want to continue anyway — hooks will be wired but linting will do nothing until tools are configured. Wait for their answer before proceeding.
+
+### TypeScript (JS/TS projects only)
+
+TypeScript type checking runs in the pre-commit hook when both are true:
+- `tsconfig.json` is present within 3 directory levels
+- `typescript` is in `devDependencies`
+
+### gitleaks
+
+Check: `which gitleaks` or `gitleaks version`. If not installed:
+
+```sh
+brew install gitleaks        # macOS
+# Linux: go install github.com/gitleaks/gitleaks/v8@latest
+```
+
+After installing, check for `.gitleaks.toml`. If absent, create one:
+```toml
+[extend]
+useDefault = true
+
+[[allowlist]]
+description = "allowlist"
+paths = []
 ```
 
 ---
 
-## Path A: Fresh Install
-
-### Ask before doing anything
-
-Infer from the repo where possible; ask only when unclear:
-
-| Question | How to infer |
-|----------|-------------|
-| **Package manager** | `package-lock.json` → npm · `yarn.lock` → yarn · `pnpm-lock.yaml` → pnpm · `bun.lockb`/`bun.lock` → bun |
-| **TypeScript or JS?** | `tsconfig.json` present or `.ts`/`.tsx` files tracked |
-| **Node version manager** | `.nvmrc`/`.node-version` → nvm · `.tool-versions` → asdf · `volta` key in package.json → volta · none found → ask the user |
-
-If the package manager cannot be inferred, ask the user. Do not assume or proceed without it.
-
-If no node version manager can be inferred, ask whether they use one before writing hook files — the answer determines whether a sourcing line is needed at the top of each hook.
+## Path A-Husky: Fresh Install
 
 ### Install Husky
+
+Use Husky **v9 or above**. The v9+ conventions are a `.husky/` directory and a `prepare` script — there is no `husky install` command, no `husky add` command, and no `_/husky.sh` shim. Do not generate any of those.
 
 ```sh
 # npm
@@ -60,32 +136,84 @@ pnpm add -D husky && pnpm exec husky init
 bun add -D husky && bunx husky init
 ```
 
-This creates `.husky/` and adds a `prepare` script to `package.json`. Any additional hook files created manually must be made executable: `chmod +x .husky/<hook-name>`.
+`husky init` creates `.husky/pre-commit` (with a placeholder) and adds a `prepare` script to `package.json`. Replace the placeholder content with the correct hook per **Hook Requirements — Husky**. Any hook files created manually must also be made executable: `chmod +x .husky/<hook-name>`.
 
-### Install required tools
+### Install lint-staged
 
-Install as dev dependencies (skip any already present in `package.json`):
+lint-staged orchestrates linter runs on staged files. Install it if not already in `devDependencies`:
 
-| Tool | Purpose |
-|------|---------|
-| `eslint` | Linting |
-| `prettier` | Formatting |
-| `lint-staged` | Runs linters on staged files only |
-| `typescript` | Type checking (TS projects only) |
-
-Install gitleaks separately (not an npm package):
 ```sh
-brew install gitleaks        # macOS
-# Linux: go install github.com/zricethezav/gitleaks/v8@latest
+npm install --save-dev lint-staged   # use detected package manager
 ```
 
-Then proceed to **Hook Requirements** to wire up the hooks, and **Config Files** for defaults.
+Then create a lint-staged config if none exists. The format depends on whether `package.json` contains `"type": "module"`:
+
+- `"type": "module"` present → create `.lintstagedrc.js` (ESM)
+- `"type": "module"` absent → create `.lintstagedrc.json`
+
+If using `.lintstagedrc.js`, verify `"type": "module"` is set in `package.json` before writing the file — without it, Node will fail to load the ESM config. Add it if missing.
+
+Linters and formatters use different globs because formatters handle more file types than linters:
+
+- **Linters** (oxlint, eslint, biome): `*.{js,jsx,ts,tsx}` only
+- **Formatters** (oxfmt, prettier): `*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}`
+
+If a tool acts as both linter and formatter (Biome), use the formatter glob.
+
+**`.lintstagedrc.js`** (ESM — use when `"type": "module"` is set):
+
+```js
+/** @type {import('lint-staged').Configuration} */
+export default {
+  '*.{js,jsx,ts,tsx}': 'oxlint --fix',
+  '*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}': 'oxfmt --write',
+};
+```
+
+**`.lintstagedrc.json`** (use when `"type": "module"` is not set):
+
+```json
+{
+  "*.{js,jsx,ts,tsx}": "eslint --fix",
+  "*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}": "prettier --write"
+}
+```
+
+Use a bare string when only one command maps to a glob; use an array only when multiple commands share the same glob (e.g. oxlint and eslint both on JS/TS files). Include only the commands for tools detected in Phase 1. If no linters were found and the user chose to continue, use an empty array.
+
+Then proceed to **Hook Requirements — Husky**.
 
 ---
 
-## Path B: Audit Existing Setup
+## Path A-Lefthook: Fresh Install
 
-First, re-confirm the package manager from the lockfile — you will need it to write hook commands. Then run each check below. Report all failures before making any changes. Never modify a passing item.
+### Install Lefthook
+
+```sh
+# npm
+npm install --save-dev lefthook && npx lefthook install
+
+# yarn
+yarn add --dev lefthook && yarn lefthook install
+
+# pnpm
+pnpm add -D lefthook && pnpm exec lefthook install
+
+# bun
+bun add -D lefthook && bunx lefthook install
+```
+
+No `prepare` script is needed — `lefthook install` wires the hooks directly into `.git/hooks/`.
+
+lint-staged is **not needed** with Lefthook — use Lefthook's native `glob` and `stage_fixed` instead.
+
+Then proceed to **Hook Requirements — Lefthook**.
+
+---
+
+## Path B-Husky: Audit Existing Setup
+
+Re-confirm the package manager from the lockfile. Run each check, report all failures first, then fix them one by one. Never modify a passing item.
 
 ### Pre-commit checks
 
@@ -94,13 +222,11 @@ First, re-confirm the package manager from the lockfile — you will need it to 
 | Husky installed | `husky` in `package.json` devDependencies |
 | Pre-commit hook exists | `.husky/pre-commit` exists and is executable |
 | Hook calls lint-staged | `grep -q 'lint-staged' .husky/pre-commit` |
+| lint-staged installed | `lint-staged` in devDependencies |
+| lint-staged config has commands | `.lintstagedrc.js`, `.lintstagedrc.json`, or `lint-staged` key in package.json contains at least one command |
 | Hook calls tsc | `grep -q 'tsc' .husky/pre-commit` (TS projects only) |
 | Hook calls gitleaks | `grep -q 'gitleaks' .husky/pre-commit` |
-| lint-staged configured | `lint-staged` in devDependencies AND a lint-staged config present (`.lintstagedrc*` or `lint-staged` key in package.json) |
-| ESLint configured | Any `.eslintrc.*` or `eslint.config.*` present |
-| Prettier configured | Any `.prettierrc*` or `prettier` key in package.json |
-| Type check available | `typescript` in devDependencies AND `tsconfig.json` found within 3 dir levels (TS projects only) |
-| Secrets scan available | `gitleaks` in PATH AND `.gitleaks.toml` present |
+| gitleaks available | `gitleaks` is in PATH |
 
 ### Pre-push checks
 
@@ -109,18 +235,44 @@ First, re-confirm the package manager from the lockfile — you will need it to 
 | Pre-push hook exists | `.husky/pre-push` exists and is executable |
 | Hook blocks push to main/master | `grep -qE 'main\|master' .husky/pre-push` and reads remote ref from stdin |
 | Hook enforces branch naming | `grep -q 'BRANCH_PATTERN' .husky/pre-push` and `grep -q 'TRUNK_PATTERN' .husky/pre-push` |
-| Hook calls test runner | `grep -qE 'test|jest|vitest|mocha' .husky/pre-push` |
-| Test script present | `test` script defined in `package.json` |
 
-For each failure: add the missing tool, config, or hook content using the reference below.
+For hook-level failures: fix using **Hook Requirements — Husky**. For missing lint configuration (empty lint-staged config): surface the gap and point to `aif-lint-setup`.
 
 ---
 
-## Hook Requirements
+## Path B-Lefthook: Audit Existing Setup
+
+Re-confirm the package manager from the lockfile. Read `lefthook.yml` and check each item below. Report all failures first, then fix them one by one.
+
+### Pre-commit checks
+
+| Check | Pass condition |
+|-------|---------------|
+| Lefthook installed | `lefthook` in `package.json` devDependencies |
+| `lefthook.yml` present | file exists at repo root |
+| `pre-commit` section present | `pre-commit:` key exists in `lefthook.yml` |
+| Linter commands cover JS/TS globs | at least one command targets `*.{js,jsx,ts,tsx}` with a detected linter |
+| tsc command present | a command runs `tsc --noEmit` (TS projects only) |
+| gitleaks command present | a command runs `gitleaks protect --staged` |
+| gitleaks available | `gitleaks` is in PATH |
+
+### Pre-push checks
+
+| Check | Pass condition |
+|-------|---------------|
+| `pre-push` section present | `pre-push:` key exists in `lefthook.yml` |
+| Hook blocks push to main/master | a command checks the remote ref for `main`/`master` |
+| Hook enforces branch naming | a command checks `BRANCH_PATTERN` and `TRUNK_PATTERN` |
+
+For failures: fix using **Hook Requirements — Lefthook**. For missing lint configuration: surface the gap and point to `aif-lint-setup`.
+
+---
+
+## Hook Requirements — Husky
 
 ### Hook preamble
 
-Every hook file must open with `set -e` immediately after the shebang. Without it, a failure in an early step (e.g. lint-staged exits non-zero) silently continues to the next step instead of aborting the whole hook:
+Every hook file must open with `set -e` immediately after the shebang. Without it, a failure in an early step silently continues instead of aborting:
 
 ```sh
 #!/bin/sh
@@ -132,7 +284,8 @@ set -e
 
 Configure `.husky/pre-commit` to run in this order:
 
-1. **Node version manager bootstrap** — if a version manager is in use, source it at the top of the hook so `node` is available in the non-interactive shell. Use the snippet matching the detected manager:
+1. **Node version manager bootstrap** — source the version manager so `node` is available in the non-interactive shell:
+
    ```sh
    # nvm
    export NVM_DIR="$HOME/.nvm"
@@ -144,25 +297,36 @@ Configure `.husky/pre-commit` to run in this order:
    # volta — no explicit sourcing needed if VOLTA_HOME is in the system PATH
    ```
 
-2. **lint-staged** — ESLint and Prettier on staged `*.{js,jsx,ts,tsx}` files only
+2. **lint-staged** — runs only on staged files. Commands come from the lint-staged config (`.lintstagedrc.js` or `.lintstagedrc.json`). Invoke using the detected package manager so the local binary is used:
 
-3. **TypeScript type check** (TS projects only) — `tsc --noEmit` on the full project (not just staged files — TSC needs the whole graph). `tsconfig.json` must explicitly `exclude` gitignored output dirs — TSC does not read `.gitignore`.
+   ```sh
+   # npm
+   npx lint-staged
+   # yarn
+   yarn lint-staged
+   # pnpm
+   pnpm lint-staged
+   # bun
+   bunx lint-staged
+   ```
 
-4. **gitleaks** — scans staged changes for secrets; blocks commit if found:
+3. **TypeScript type check** (TS projects only) — `tsc --noEmit` on the full project. TSC needs the whole graph, not just staged files. `tsconfig.json` must explicitly `exclude` gitignored output dirs — TSC does not read `.gitignore`.
+
+4. **gitleaks** — scans staged changes for secrets:
    ```sh
    gitleaks protect --staged
-   # if .gitleaks.toml is present, pass: gitleaks protect --staged --config .gitleaks.toml
+   # if .gitleaks.toml is present: gitleaks protect --staged --config .gitleaks.toml
    ```
+
+Make the hook executable: `chmod +x .husky/pre-commit`
 
 ### Pre-push — what must run
 
 Configure `.husky/pre-push` to run (with the same version manager bootstrap as pre-commit):
 
-1. **Block push to main/master** — reads the remote ref from stdin (which git passes to pre-push) and aborts if the destination branch is `main` or `master`. This is a last-resort guard for repos without remote branch protection:
+1. **Block push to main/master** — reads the remote ref from stdin:
 
    ```sh
-   # git passes one line per ref being pushed: <local-ref> <local-sha> <remote-ref> <remote-sha>
-   # exit 1 inside the loop terminates the entire script immediately — not just the loop iteration
    while read local_ref local_sha remote_ref remote_sha; do
      if echo "$remote_ref" | grep -qE '^refs/heads/(main|master)$'; then
        echo "Direct push to ${remote_ref} is not allowed. Open a pull request instead."
@@ -171,118 +335,136 @@ Configure `.husky/pre-push` to run (with the same version manager bootstrap as p
    done
    ```
 
-   > This does not fire when there is no stdin (e.g. `git push --dry-run` with no piped input). Always pair with remote branch protection rules where the hosting platform supports it.
+   > This does not fire when there is no stdin (e.g. `git push --dry-run`). Always pair with remote branch protection rules where the hosting platform supports it.
 
-   > `develop` is intentionally not blocked here — teams that treat `develop` as a protected integration branch should add it to the pattern: `^refs/heads/(main|master|develop)$`. Note that trunk branches exempt from naming rules are not automatically the same set as branches blocked from direct push — align the two sets deliberately.
-
-2. **Branch naming check** — enforces the [Conventional Branch](https://conventionalbranch.org) naming convention before the push reaches the remote:
+2. **Branch naming check** — enforces [Conventional Branch](https://conventionalbranch.org):
 
    ```sh
    BRANCH=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
-   # Conventional Branch: type/description — lowercase, hyphens/dots as separators only
-   # [a-z0-9]+([.-][a-z0-9]+)* enforces: no leading/trailing/consecutive separators
-   # Trunk branches (main, master, develop) are exempt
    BRANCH_PATTERN='^(feature|feat|bugfix|fix|hotfix|release|chore)/[a-z0-9]+([.-][a-z0-9]+)*$'
    TRUNK_PATTERN='^(main|master|develop)$'
 
    if [ -n "$BRANCH" ] && ! echo "$BRANCH" | grep -qE "$TRUNK_PATTERN" && ! echo "$BRANCH" | grep -qE "$BRANCH_PATTERN"; then
      echo "Branch name '$BRANCH' does not follow Conventional Branch naming."
-     echo "Format: <type>/<description>  e.g. feat/add-login, fix/null-deref, hotfix/payment-crash"
+     echo "Format: <type>/<description>  e.g. feat/add-login, fix/null-deref"
      echo "Valid types: feature, feat, bugfix, fix, hotfix, release, chore"
-     echo "Rules: lowercase, hyphens to separate words, no consecutive hyphens or dots"
      echo "Rename with: git branch -m $BRANCH <new-name>"
      exit 1
    fi
    ```
 
-   Valid types per [conventionalbranch.org](https://conventionalbranch.org):
-
-   | Type | Purpose | Example |
-   |------|---------|---------|
-   | `feature/` or `feat/` | New features | `feat/add-login-page` |
-   | `bugfix/` or `fix/` | Bug fixes | `fix/null-deref` |
-   | `hotfix/` | Urgent production fixes | `hotfix/payment-crash` |
-   | `release/` | Release preparation (dots allowed for versions) | `release/v1.2.0` |
-   | `chore/` | Non-code tasks | `chore/update-deps` |
-
-   Trunk branches (`main`, `master`, `develop`) are exempt from the pattern check.
-
-   If the team uses ticket numbers, they go in the description: `feat/issue-123-add-login`.
-
-   Ask the team which convention to enforce if not already documented. If no convention exists yet, default to Conventional Branch and note it in the project's CLAUDE.md or contributing guide.
-
-   After writing the hook file, make it executable: `chmod +x .husky/pre-push`
-
-3. **Test suite** — full test suite; block push if any test fails.
-
-   Detect the test runner from `package.json`:
-   - `jest` in devDependencies → `npx jest` (or PM equivalent)
-   - `vitest` in devDependencies → `npx vitest run`
-   - `mocha` in devDependencies → `npx mocha`
-   - Existing `test` script defined → use it directly: `npm test` / `yarn test` / `pnpm test` / `bun test`
-   - None found → ask the user before writing the hook
+Make the hook executable: `chmod +x .husky/pre-push`
 
 ---
 
-## Config Files
+## Hook Requirements — Lefthook
 
-For each file: if absent, create it with the baseline. If present, check the baseline conditions and add any missing pieces — do not remove or overwrite existing content.
+Lefthook config lives entirely in `lefthook.yml` at the repo root. Commands run sequentially by default — a failing command stops the chain, like `set -e` in shell.
 
-### ESLint
+Use `glob` to target specific file types; `stage_fixed: true` auto-restages files after a linter fixes them (equivalent to `git add` after `eslint --fix`). Use `{staged_files}` as the placeholder — Lefthook substitutes in only the staged files matching the glob.
 
-**Baseline:** must extend at least one ruleset; TS projects must include a TypeScript-aware parser.
+### Pre-commit
 
-| Condition | Action |
-|-----------|--------|
-| No ESLint config found | Create `.eslintrc.json` with `eslint:recommended`, node/es2021 env |
-| Config present but no `extends` or `plugins` | Add `"extends": ["eslint:recommended"]` |
-| TS project but no `@typescript-eslint` parser | Add `@typescript-eslint/parser` and `@typescript-eslint/eslint-plugin` |
+Include only the commands for tools detected in Phase 1 — don't add entries for tools that aren't configured. If no linters were found and the user chose to continue, omit the linter commands entirely.
 
-### lint-staged
+**JS/TS example** (ESLint + Prettier + TypeScript):
 
-**Baseline:** must run eslint and prettier on `*.{js,jsx,ts,tsx}` files.
+```yaml
+pre-commit:
+  commands:
+    eslint:
+      glob: "*.{js,jsx,ts,tsx}"
+      run: eslint --fix {staged_files}
+      stage_fixed: true
+    prettier:
+      glob: "*.{js,jsx,ts,tsx}"
+      run: prettier --write {staged_files}
+      stage_fixed: true
+    tsc:
+      run: tsc --noEmit
+    gitleaks:
+      run: gitleaks protect --staged
+```
 
-| Condition | Action |
-|-----------|--------|
-| No lint-staged config and no `lint-staged` key in package.json | Create `.lintstagedrc.json` with `*.{js,jsx,ts,tsx}` → `["eslint --fix", "prettier --write"]` |
-| Config present but missing eslint command on JS/TS files | Add `eslint --fix` to the matching glob |
-| Config present but missing prettier command on JS/TS files | Add `prettier --write` to the matching glob |
+**Go example** (golangci-lint):
 
-### Prettier
+```yaml
+pre-commit:
+  commands:
+    golangci-lint:
+      glob: "*.go"
+      run: golangci-lint run
+    gitleaks:
+      run: gitleaks protect --staged
+```
 
-**Baseline:** config must exist (any config is acceptable — formatting preferences vary by team).
+**Shell example** (shellcheck):
 
-| Condition | Action |
-|-----------|--------|
-| No Prettier config and no `prettier` key in package.json | Create `.prettierrc` with sensible defaults: 100 char width, 2-space indent, single quotes, trailing commas |
+```yaml
+pre-commit:
+  commands:
+    shellcheck:
+      glob: "*.sh"
+      run: shellcheck {staged_files}
+    gitleaks:
+      run: gitleaks protect --staged
+```
 
-### tsconfig.json
+For gitleaks, if `.gitleaks.toml` is present use: `gitleaks protect --staged --config .gitleaks.toml`
 
-**Baseline:** `strict` enabled, `noEmit` set, and common output/generated dirs excluded.
+### Pre-push
 
-| Condition | Action |
-|-----------|--------|
-| No tsconfig found | Create with `strict: true`, `noEmit: true`, `exclude: ["node_modules", "dist", "build"]` |
-| `strict` not set or false | Add `"strict": true` to `compilerOptions` |
-| `noEmit` not set | Add `"noEmit": true` to `compilerOptions` |
-| `exclude` absent or missing `dist`/`build` | Add the missing dirs; also scan `.gitignore` for other output dirs and add those too |
+The main/master push block reads from stdin, which Lefthook forwards to `run` commands in the pre-push hook. For readability, put the complex shell logic in a dedicated script and call it from `lefthook.yml`:
 
-### gitleaks
+**`scripts/hooks/check-push-target.sh`** (create if it doesn't exist, make it executable):
 
-**Baseline:** must extend the default ruleset so known secret patterns are covered.
+```sh
+#!/bin/sh
+set -e
+while read local_ref local_sha remote_ref remote_sha; do
+  if echo "$remote_ref" | grep -qE '^refs/heads/(main|master)$'; then
+    echo "Direct push to ${remote_ref} is not allowed. Open a pull request instead."
+    exit 1
+  fi
+done
+```
 
-| Condition | Action |
-|-----------|--------|
-| No `.gitleaks.toml` | Create with `[extend] useDefault = true` and an `[[allowlist]]` stub |
-| Present but no `useDefault = true` | Add `[extend]\nuseDefault = true` |
+```yaml
+pre-push:
+  commands:
+    block-main:
+      run: sh scripts/hooks/check-push-target.sh
+    branch-naming:
+      run: |
+        BRANCH=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+        BRANCH_PATTERN='^(feature|feat|bugfix|fix|hotfix|release|chore)/[a-z0-9]+([.-][a-z0-9]+)*$'
+        TRUNK_PATTERN='^(main|master|develop)$'
+        if [ -n "$BRANCH" ] && ! echo "$BRANCH" | grep -qE "$TRUNK_PATTERN" && ! echo "$BRANCH" | grep -qE "$BRANCH_PATTERN"; then
+          echo "Branch '$BRANCH' does not follow Conventional Branch naming."
+          echo "Format: <type>/<description>  e.g. feat/add-login, fix/null-deref"
+          echo "Valid types: feature, feat, bugfix, fix, hotfix, release, chore"
+          echo "Rename with: git branch -m $BRANCH <new-name>"
+          exit 1
+        fi
+```
+
+Make the script executable: `chmod +x scripts/hooks/check-push-target.sh`
 
 ---
 
 ## Adding a New Check
 
-1. Run `grep -q '<your-command>' .husky/<hook>` as a shell command — if it exits 0 the command is already present; stop here.
-2. If not found, append the command to the hook file using a file edit tool, not a shell redirect (redirects can silently truncate on error).
+### Husky
+
+1. Run `grep -q '<your-command>' .husky/<hook>` — if it exits 0 the command is already present; stop here.
+2. If not found, append the command to the hook file using a file edit tool, not a shell redirect.
 3. Make the hook executable: `chmod +x .husky/<hook>`
+
+### Lefthook
+
+1. Check `lefthook.yml` — if a command with the same key or `run` value already exists under the relevant hook section, stop here.
+2. If not found, add a new named command entry under the appropriate section in `lefthook.yml`.
+3. Run `lefthook install` to re-sync (Lefthook re-reads `lefthook.yml` on each run, but re-installing ensures the hook binary is up to date).
 
 ---
 
@@ -290,12 +472,15 @@ For each file: if absent, create it with the baseline. If present, check the bas
 
 | Mistake | Fix |
 |---------|-----|
-| Node commands fail silently in hook | Hooks run in non-interactive shells — source the version manager at the top of the hook (see bootstrap snippet in Hook Requirements) |
-| TSC errors on generated or dist files | TSC does not read `.gitignore` — add output dirs to the `exclude` array in `tsconfig.json` |
+| Node commands fail silently in Husky hook | Hooks run in non-interactive shells — source the version manager at the top of each hook |
+| TSC errors on generated or dist files | TSC does not read `.gitignore` — add output dirs to `exclude` in `tsconfig.json` |
 | TSC only checks staged files | Always `tsc --noEmit` without file args — TSC needs the full project graph |
-| Tests skipped when nothing staged | Pre-push runs against the full branch, not staged files — always run the full suite |
-| Hook file not executable | `chmod +x .husky/<hook-name>` — git silently skips non-executable hooks |
-| Pre-push hook hangs with vitest | `vitest` defaults to watch mode — use `vitest run` or `npx vitest run` explicitly; do not rely on a `test` script that may invoke watch mode |
-| Main branch check never fires | The stdin-based check only works when git pipes ref info — ensure the `while read` loop is present and not replaced with a simple `git branch --show-current` approach, which reads local state not the push target |
-| Branch pattern rejects detached HEAD | `git symbolic-ref` exits non-zero in detached HEAD state — always guard with `[ -n "$BRANCH" ]` before pattern matching |
-| Consecutive hyphens/dots pass naive pattern | `[a-z0-9][a-z0-9.-]*[a-z0-9]` allows `feat/ab--cd` — use `[a-z0-9]+([.-][a-z0-9]+)*` instead, which requires every separator to be followed by an alphanumeric |
+| Husky hook file not executable | `chmod +x .husky/<hook-name>` — git silently skips non-executable hooks |
+| Husky v8 patterns used instead of v9 | Do not generate `husky install`, `husky add`, or the `_/husky.sh` shim — these are v8 only. v9 uses `husky init` and a `prepare` script. |
+| Main branch check never fires (Husky) | Use the `while read` stdin loop — `git branch --show-current` reads local state, not the push target |
+| Branch pattern rejects detached HEAD | Guard with `[ -n "$BRANCH" ]` before pattern matching |
+| Consecutive hyphens/dots pass naive pattern | Use `[a-z0-9]+([.-][a-z0-9]+)*` — requires every separator to be followed by alphanumeric |
+| lint-staged wired but config is empty | The hook runs but does nothing — use `aif-lint-setup` to configure what lint-staged runs |
+| Lefthook `{staged_files}` empty on first commit | Expected — no staged files matching the glob means the command is skipped, not an error |
+| Lefthook `stage_fixed: true` not set | Fixed files won't be restaged — the commit will contain the unfixed version |
+| Lefthook not re-installed after `lefthook.yml` changes | `lefthook.yml` is read fresh on each hook run — no reinstall needed for config changes; only reinstall if the hook binary itself needs updating |
