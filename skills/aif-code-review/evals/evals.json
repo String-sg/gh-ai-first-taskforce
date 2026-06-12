@@ -1,0 +1,39 @@
+{
+  "skill_name": "aif-code-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review my code changes.",
+      "expected_output": "Skill asks 'Are you reviewing a PR or your local working branch?' before doing any diff or analysis. The mode selection question is the first substantive output. (In absence of a user response, the skill may default to local branch and proceed.)",
+      "files": [],
+      "assertions": [
+        "Output contains a mode selection question referencing 'PR' and 'local' or 'branch'",
+        "Output contains at least one finding or a severity table (the review actually ran after mode selection)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review my code on my local working branch. For any triage prompts asking 'Fix now or later?', answer 'later' for all findings. Do not generate a report at the end.",
+      "expected_output": "Skill runs all 7 review angles on the branch diff, triages all findings as 'To be fixed', prints a severity counts table and What Looks Good section. No report file is written to the review/ directory.",
+      "files": [],
+      "assertions": [
+        "Output contains a severity counts table (Critical / High / Medium / Low)",
+        "Output contains 'To be fixed' (triage status applied)",
+        "Output contains 'What Looks Good' section with at least one bullet",
+        "No file created under review/ directory"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review my code on my local working branch. For any triage prompts asking 'Fix now or later?', answer 'later' for all findings. Yes, generate a report at the end.",
+      "expected_output": "Skill runs all 7 review angles, triages findings as 'To be fixed', prints the summary, then writes a report file to review/<safe-branch>/report-<timestamp>.md. Report contains severity table, findings with Triage field, and What Looks Good section.",
+      "files": [],
+      "assertions": [
+        "A report file is created under review/ (path starts with review/)",
+        "Report contains a severity counts table",
+        "Report contains 'Triage:' field on at least one finding entry",
+        "Report contains 'What Looks Good' section"
+      ]
+    }
+  ]
+}
