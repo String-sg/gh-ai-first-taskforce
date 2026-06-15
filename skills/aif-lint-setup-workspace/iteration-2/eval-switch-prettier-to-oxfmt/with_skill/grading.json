@@ -1,0 +1,58 @@
+{
+  "expectations": [
+    {
+      "text": ".prettierignore was NOT created",
+      "passed": true,
+      "evidence": "ls -la shows no .prettierignore in outputs dir. .prettierrc.json was also correctly removed (not kept after switching away from Prettier)."
+    },
+    {
+      "text": ".oxfmtrc.json was created with correct default config",
+      "passed": true,
+      "evidence": ".oxfmtrc.json present (176 bytes). Settings migrated from .prettierrc.json (printWidth 100, singleQuote, trailingComma all) with sortImports: true added per skill template."
+    },
+    {
+      "text": "package.json format script uses oxfmt (not prettier)",
+      "passed": true,
+      "evidence": "package.json format script: \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\". prettier removed from devDependencies."
+    },
+    {
+      "text": "eslint-config-prettier is present in devDependencies (ESLint+formatter wiring)",
+      "passed": true,
+      "evidence": "package.json devDependencies: \"eslint-config-prettier\": \"10.1.8\". eslint.config.js updated with prettier import added last."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 23,
+    "total_steps": 4,
+    "files_created": [".oxfmtrc.json", "eslint.config.js", "package.json", "metrics.json"],
+    "errors_encountered": 0,
+    "output_chars": 1693,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "total_duration_seconds": 140.4
+  },
+  "claims": [
+    {
+      "claim": "eslint-config-prettier is a compatibility shim, not Prettier — no Prettier files created alongside it",
+      "type": "process",
+      "verified": true,
+      "evidence": "No .prettierignore or .prettierrc.json in outputs. Summary explicitly cites the skill's guardrail note."
+    }
+  ],
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "Both this run and old_skill pass all assertions — the eval is non-discriminating for the second eval in a row. The bug (spurious .prettierignore creation) does not reproduce when agents are asked to explicitly follow the skill. This is likely because the controlled eval prompt primes careful reading. To make this eval discriminating, consider removing the 'follow the skill exactly' framing and instead just providing the skill as context — letting the model decide how to proceed without the explicit instruction to be faithful."
+      }
+    ],
+    "overall": "All 4 assertions pass. Eval is a valid regression guard but does not catch the original bug. The fix adds correct guardrails; the eval confirms no regressions."
+  }
+}

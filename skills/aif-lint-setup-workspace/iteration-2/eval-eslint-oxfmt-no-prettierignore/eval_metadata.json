@@ -1,0 +1,12 @@
+{
+  "eval_id": 5,
+  "eval_name": "eval-eslint-oxfmt-no-prettierignore",
+  "prompt": "Our TypeScript project has no formatting set up yet. We want ESLint for linting and oxfmt for formatting. We use npm.",
+  "assertions": [
+    ".prettierignore was NOT created",
+    ".prettierrc.json was NOT created",
+    ".oxfmtrc.json was created with correct default config",
+    "eslint.config.js was created",
+    "eslint-config-prettier was installed (for ESLint+formatter wiring)"
+  ]
+}

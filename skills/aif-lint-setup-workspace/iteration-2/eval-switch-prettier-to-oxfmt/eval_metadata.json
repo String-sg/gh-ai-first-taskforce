@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "eval_name": "eval-switch-prettier-to-oxfmt",
+  "prompt": "We're moving from Prettier to oxfmt for formatting. Remove Prettier and replace it with oxfmt. Keep ESLint as-is. We use npm.",
+  "assertions": [
+    ".prettierignore was NOT created",
+    ".oxfmtrc.json was created with correct default config",
+    "package.json format script uses oxfmt (not prettier)",
+    "eslint-config-prettier is present in devDependencies (ESLint+formatter wiring)"
+  ]
+}

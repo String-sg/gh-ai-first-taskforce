@@ -1,0 +1,47 @@
+{
+  "expectations": [
+    {
+      "text": ".prettierignore was NOT created",
+      "passed": true,
+      "evidence": "ls -la shows no .prettierignore in outputs dir."
+    },
+    {
+      "text": ".oxfmtrc.json was created with correct default config",
+      "passed": true,
+      "evidence": ".oxfmtrc.json present (178 bytes) with correct settings."
+    },
+    {
+      "text": "package.json format script uses oxfmt (not prettier)",
+      "passed": true,
+      "evidence": "package.json format script: \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\". prettier removed from devDependencies."
+    },
+    {
+      "text": "eslint-config-prettier is present in devDependencies (ESLint+formatter wiring)",
+      "passed": true,
+      "evidence": "package.json devDependencies: \"eslint-config-prettier\": \"9.1.0\"."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 13,
+    "total_steps": 4,
+    "files_created": [".oxfmtrc.json", "eslint.config.js", "package.json", "metrics.json"],
+    "errors_encountered": 0,
+    "output_chars": 1676,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "total_duration_seconds": 101.3
+  },
+  "claims": [],
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "All 4 assertions pass but this matches with_skill — non-discriminating. Note: old_skill used older pinned versions (oxfmt@0.1.0, eslint-config-prettier@9.1.0) rather than the ≥7-day-old constraint — the supply-chain version check was not followed correctly."
+  }
+}

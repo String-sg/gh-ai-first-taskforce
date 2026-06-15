@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "aif-lint-setup", "runs": [{"id": "eval-eslint-oxfmt-no-prettierignore-old_skill", "prompt": "Our TypeScript project has no formatting set up yet. We want ESLint for linting and oxfmt for formatting. We use npm.", "eval_id": 5, "outputs": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxfmt/configuration_schema.json\",\n  \"printWidth\": 100,\n  \"tabWidth\": 2,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n\n  \"sortImports\": true,\n}\n"}, {"name": "eslint.config.js", "type": "text", "content": "import eslint from '@eslint/js';\nimport tseslint from 'typescript-eslint';\nimport reactPlugin from 'eslint-plugin-react';\nimport reactHooksPlugin from 'eslint-plugin-react-hooks';\nimport globals from 'globals';\nimport prettier from 'eslint-config-prettier';\n\nexport default tseslint.config(\n  {\n    ignores: ['**/build/**', '**/dist/**', '**/node_modules/**'],\n  },\n  {\n    languageOptions: {\n      globals: {\n        ...globals.browser,\n        ...globals.node,\n      },\n    },\n  },\n  eslint.configs.recommended,\n  ...tseslint.configs.recommended,\n  {\n    plugins: {\n      react: reactPlugin,\n      'react-hooks': reactHooksPlugin,\n    },\n    rules: {\n      'no-console': 'warn',\n\n      // Rules from oxlint not enabled by eslint:recommended\n      'no-array-constructor': 'error',\n      'no-case-declarations': 'error',\n      'no-empty': 'error',\n      'no-empty-function': 'error',\n      'no-fallthrough': 'error',\n      'no-prototype-builtins': 'error',\n      'no-redeclare': 'error',\n      'no-regex-spaces': 'error',\n      'no-unexpected-multiline': 'error',\n\n      '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error',\n      '@typescript-eslint/adjacent-overload-signatures': 'error',\n      '@typescript-eslint/array-type': 'error',\n      '@typescript-eslint/ban-ts-comment': 'error',\n      '@typescript-eslint/ban-tslint-comment': 'error',\n      '@typescript-eslint/class-literal-property-style': 'error',\n      '@typescript-eslint/consistent-generic-constructors': 'error',\n      '@typescript-eslint/consistent-indexed-object-style': 'error',\n      '@typescript-eslint/consistent-type-assertions': 'error',\n      '@typescript-eslint/consistent-type-definitions': 'error',\n      '@typescript-eslint/no-confusing-non-null-assertion': 'error',\n      '@typescript-eslint/no-empty-object-type': 'error',\n      '@typescript-eslint/no-explicit-any': 'error',\n      '@typescript-eslint/no-inferrable-types': 'error',\n      '@typescript-eslint/no-namespace': 'error',\n      '@typescript-eslint/no-require-imports': 'error',\n      '@typescript-eslint/no-unnecessary-type-constraint': 'error',\n      '@typescript-eslint/no-unsafe-function-type': 'error',\n      '@typescript-eslint/prefer-for-of': 'error',\n      '@typescript-eslint/prefer-function-type': 'error',\n\n      'react/display-name': 'error',\n      'react/jsx-no-comment-textnodes': 'error',\n      'react/jsx-no-target-blank': 'error',\n      'react/no-unescaped-entities': 'error',\n      'react/no-unknown-property': 'error',\n      'react-hooks/rules-of-hooks': 'error',\n    },\n  },\n  prettier,        // must be last\n);\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-typescript-project\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"lint\": \"eslint .\",\n    \"lint:fix\": \"eslint . --fix\",\n    \"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n  },\n  \"devDependencies\": {\n    \"@eslint/js\": \"10.0.1\",\n    \"eslint\": \"10.5.0\",\n    \"eslint-config-prettier\": \"10.1.8\",\n    \"eslint-plugin-react\": \"7.37.5\",\n    \"eslint-plugin-react-hooks\": \"7.1.1\",\n    \"globals\": \"17.6.0\",\n    \"oxfmt\": \"0.54.0\",\n    \"typescript-eslint\": \"8.61.0\"\n  }\n}\n"}, {"name": "summary.md", "type": "text", "content": "# Lint Setup Summary \u2014 ESLint + oxfmt (npm)\n\n## Phase 1: Detection\n\n- **JS/TS detected:** `package.json` present.\n- **Go detected:** No (`go.mod` not found).\n- **Shell scripts detected:** No (`*.sh` files not found).\n- **Existing lint config:** None found. No `eslint.config.js`, `.eslintrc*`, `biome.json`, `.oxlintrc.json`, `.prettier*`, or `.oxfmtrc.json` present.\n\n## Phase 2: Plan Confirmed\n\nUser requested:\n- **Linter:** ESLint\n- **Formatter:** oxfmt\n- **Package manager:** npm (user-stated; no lockfile present to detect automatically)\n\nCompatibility wiring required: ESLint + oxfmt \u2192 install `eslint-config-prettier` and add `prettier` last in `eslint.config.js`.\n\n## Phase 3: Install and Configure\n\n### Package manager: npm\n\n**Version selection:** Checked npm registry for most recent versions published at least 7 days before 2026-06-15.\n\n### Step 1 \u2014 Install ESLint and plugins\n\n```bash\nnpm install --save-dev eslint@10.5.0 @eslint/js@10.0.1 typescript-eslint@8.61.0 eslint-plugin-react@7.37.5 eslint-plugin-react-hooks@7.1.1 globals@17.6.0\n```\n\n### Step 2 \u2014 Install oxfmt\n\n```bash\nnpm install --save-dev oxfmt@0.54.0\n```\n\n### Step 3 \u2014 Compatibility wiring (ESLint + oxfmt)\n\nInstall `eslint-config-prettier` to disable ESLint formatting rules that would conflict with oxfmt:\n\n```bash\nnpm install --save-dev eslint-config-prettier@10.1.8\n```\n\n### Step 4 \u2014 Run linter to verify\n\n```bash\nnpx eslint .\n```\n\n### Step 5 \u2014 Run formatter check to verify\n\n```bash\nnpx oxfmt --check \"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\"\n```\n\n## Files Created\n\n| File | Purpose |\n|------|---------|\n| `eslint.config.js` | ESLint flat config with TypeScript, React, and react-hooks rules; `eslint-config-prettier` applied last |\n| `.oxfmtrc.json` | oxfmt formatter config (printWidth 100, singleQuote, trailingComma all, sortImports) |\n| `package.json` | Updated with `lint`, `lint:fix`, and `format` scripts; all devDependencies pinned |\n\n## package.json Scripts Added\n\n```json\n\"lint\": \"eslint .\",\n\"lint:fix\": \"eslint . --fix\",\n\"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n```\n\n## Post-Setup Reminder\n\nLint is now configured. To enforce it automatically on commit, use the `aif-git-hooks-setup` skill.\n"}], "grading": {"expectations": [{"text": ".prettierignore was NOT created", "passed": true, "evidence": "ls -la of outputs dir shows no .prettierignore. The old skill also did not create one in this controlled eval run."}, {"text": ".prettierrc.json was NOT created", "passed": true, "evidence": "ls -la of outputs dir shows no .prettierrc.json."}, {"text": ".oxfmtrc.json was created with correct default config", "passed": true, "evidence": ".oxfmtrc.json present in outputs dir (178 bytes). Summary confirms printWidth 100, singleQuote, trailingComma all, sortImports \u2014 matching skill defaults."}, {"text": "eslint.config.js was created", "passed": true, "evidence": "eslint.config.js present in outputs dir (2593 bytes)."}, {"text": "eslint-config-prettier was installed (for ESLint+formatter wiring)", "passed": true, "evidence": "package.json devDependencies includes 'eslint-config-prettier': '10.1.8'."}], "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "execution_metrics": {"tool_calls": {}, "total_tool_calls": 21, "total_steps": 5, "files_created": ["eslint.config.js", ".oxfmtrc.json", "package.json", "summary.md", "metrics.json"], "errors_encountered": 0, "output_chars": 5700, "transcript_chars": 0}, "timing": {"total_duration_seconds": 127.0}, "claims": [], "eval_feedback": {"suggestions": [], "overall": "All assertions pass but this is the same result as with_skill \u2014 the eval is non-discriminating in this run. The pre-fix skill behaved correctly here, suggesting the bug requires a more targeted prompt to reproduce reliably."}}}, {"id": "eval-eslint-oxfmt-no-prettierignore-with_skill", "prompt": "Our TypeScript project has no formatting set up yet. We want ESLint for linting and oxfmt for formatting. We use npm.", "eval_id": 5, "outputs": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxfmt/configuration_schema.json\",\n  \"printWidth\": 100,\n  \"tabWidth\": 2,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n\n  \"sortImports\": true,\n}\n"}, {"name": "eslint.config.js", "type": "text", "content": "import eslint from '@eslint/js';\nimport tseslint from 'typescript-eslint';\nimport reactPlugin from 'eslint-plugin-react';\nimport reactHooksPlugin from 'eslint-plugin-react-hooks';\nimport globals from 'globals';\nimport prettier from 'eslint-config-prettier';\n\nexport default tseslint.config(\n  {\n    ignores: ['**/build/**', '**/dist/**', '**/node_modules/**'],\n  },\n  {\n    languageOptions: {\n      globals: {\n        ...globals.browser,\n        ...globals.node,\n      },\n    },\n  },\n  eslint.configs.recommended,\n  ...tseslint.configs.recommended,\n  {\n    plugins: {\n      react: reactPlugin,\n      'react-hooks': reactHooksPlugin,\n    },\n    rules: {\n      'no-console': 'warn',\n\n      // Rules from oxlint not enabled by eslint:recommended\n      'no-array-constructor': 'error',\n      'no-case-declarations': 'error',\n      'no-empty': 'error',\n      'no-empty-function': 'error',\n      'no-fallthrough': 'error',\n      'no-prototype-builtins': 'error',\n      'no-redeclare': 'error',\n      'no-regex-spaces': 'error',\n      'no-unexpected-multiline': 'error',\n\n      '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error',\n      '@typescript-eslint/adjacent-overload-signatures': 'error',\n      '@typescript-eslint/array-type': 'error',\n      '@typescript-eslint/ban-ts-comment': 'error',\n      '@typescript-eslint/ban-tslint-comment': 'error',\n      '@typescript-eslint/class-literal-property-style': 'error',\n      '@typescript-eslint/consistent-generic-constructors': 'error',\n      '@typescript-eslint/consistent-indexed-object-style': 'error',\n      '@typescript-eslint/consistent-type-assertions': 'error',\n      '@typescript-eslint/consistent-type-definitions': 'error',\n      '@typescript-eslint/no-confusing-non-null-assertion': 'error',\n      '@typescript-eslint/no-empty-object-type': 'error',\n      '@typescript-eslint/no-explicit-any': 'error',\n      '@typescript-eslint/no-inferrable-types': 'error',\n      '@typescript-eslint/no-namespace': 'error',\n      '@typescript-eslint/no-require-imports': 'error',\n      '@typescript-eslint/no-unnecessary-type-constraint': 'error',\n      '@typescript-eslint/no-unsafe-function-type': 'error',\n      '@typescript-eslint/prefer-for-of': 'error',\n      '@typescript-eslint/prefer-function-type': 'error',\n\n      'react/display-name': 'error',\n      'react/jsx-no-comment-textnodes': 'error',\n      'react/jsx-no-target-blank': 'error',\n      'react/no-unescaped-entities': 'error',\n      'react/no-unknown-property': 'error',\n      'react-hooks/rules-of-hooks': 'error',\n    },\n  },\n  prettier,        // must be last\n);\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-typescript-project\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"lint\": \"eslint .\",\n    \"lint:fix\": \"eslint . --fix\",\n    \"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n  },\n  \"devDependencies\": {\n    \"@eslint/js\": \"10.0.1\",\n    \"eslint\": \"10.5.0\",\n    \"eslint-config-prettier\": \"10.1.8\",\n    \"eslint-plugin-react\": \"7.37.5\",\n    \"eslint-plugin-react-hooks\": \"7.1.1\",\n    \"globals\": \"17.6.0\",\n    \"oxfmt\": \"0.54.0\",\n    \"typescript-eslint\": \"8.61.0\"\n  }\n}\n"}, {"name": "summary.md", "type": "text", "content": "# aif-lint-setup \u2014 Eval Run Summary\n\n## Phase 1: Detection\n\n- **JS/TS**: detected (package.json present)\n- **Go**: not detected (no go.mod)\n- **Shell scripts**: not detected (no *.sh files)\n- **Existing lint config**: none found (no eslint.config.js, .eslintrc*, biome.json, .oxlintrc.json, .prettier*, .oxfmtrc.json)\n\n## Phase 2: Choices Confirmed\n\n- **Linter**: ESLint\n- **Formatter**: oxfmt\n- **Package manager**: npm (specified by user)\n- **Compatibility wiring**: ESLint + oxfmt \u2192 install `eslint-config-prettier`, add it last in `eslint.config.js`\n\n## Phase 3: Files Created\n\n| File | Purpose |\n|------|---------|\n| `eslint.config.js` | ESLint flat config with TypeScript, React, and eslint-config-prettier wiring |\n| `.oxfmtrc.json` | oxfmt formatter config (JSONC with trailing comma and sortImports) |\n| `package.json` | Updated with lint/format scripts and pinned devDependencies |\n\n## npm Commands That Would Be Run\n\n### Step 1 \u2014 Install ESLint and plugins\n\n```bash\nnpm install --save-dev eslint@10.5.0 @eslint/js@10.0.1 typescript-eslint@8.61.0 eslint-plugin-react@7.37.5 eslint-plugin-react-hooks@7.1.1 globals@17.6.0\n```\n\n### Step 2 \u2014 Install oxfmt\n\n```bash\nnpm install --save-dev oxfmt@0.54.0\n```\n\n### Step 3 \u2014 Compatibility wiring: ESLint + oxfmt\n\n```bash\nnpm install --save-dev eslint-config-prettier@10.1.8\n```\n\n### Step 4 \u2014 Verify linter runs (would run after install)\n\n```bash\nnpx eslint .\n```\n\n### Step 5 \u2014 Verify formatter runs (would run after install)\n\n```bash\nnpx oxfmt --check \"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\"\n```\n\n## package.json Scripts Added\n\n```json\n\"lint\": \"eslint .\",\n\"lint:fix\": \"eslint . --fix\",\n\"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n```\n\n## Version Selection Notes\n\nAll versions confirmed as the most recent published versions at least 7 days old as of 2026-06-15:\n\n| Package | Version |\n|---------|---------|\n| eslint | 10.5.0 |\n| @eslint/js | 10.0.1 |\n| typescript-eslint | 8.61.0 |\n| eslint-plugin-react | 7.37.5 |\n| eslint-plugin-react-hooks | 7.1.1 |\n| globals | 17.6.0 |\n| oxfmt | 0.54.0 |\n| eslint-config-prettier | 10.1.8 |\n\n## Compatibility Wiring Applied\n\n- `eslint-config-prettier` installed and added **last** in `eslint.config.js` to disable ESLint formatting rules that would conflict with oxfmt.\n- No `.prettierrc.json` or `.prettierignore` created \u2014 `eslint-config-prettier` is a shim only, not a Prettier install.\n\n## Post-Setup Reminder\n\nLint is now configured. To enforce it automatically on commit, use the `aif-git-hooks-setup` skill.\n"}], "grading": {"expectations": [{"text": ".prettierignore was NOT created", "passed": true, "evidence": "ls -la of outputs dir shows no .prettierignore. summary.md explicitly states: 'No .prettierrc.json or .prettierignore created \u2014 eslint-config-prettier is a shim only, not a Prettier install.'"}, {"text": ".prettierrc.json was NOT created", "passed": true, "evidence": "ls -la of outputs dir shows no .prettierrc.json. Confirmed by summary.md."}, {"text": ".oxfmtrc.json was created with correct default config", "passed": true, "evidence": ".oxfmtrc.json present in outputs dir (178 bytes). Summary confirms JSONC format with sortImports: true, printWidth: 100, singleQuote, trailingComma: all \u2014 matching skill defaults."}, {"text": "eslint.config.js was created", "passed": true, "evidence": "eslint.config.js present in outputs dir (2593 bytes). Summary confirms flat config with TypeScript, React plugins, and eslint-config-prettier added last."}, {"text": "eslint-config-prettier was installed (for ESLint+formatter wiring)", "passed": true, "evidence": "package.json devDependencies includes 'eslint-config-prettier': '10.1.8'. Summary confirms Step 3 compatibility wiring install."}], "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "execution_metrics": {"tool_calls": {}, "total_tool_calls": 24, "total_steps": 5, "files_created": ["eslint.config.js", ".oxfmtrc.json", "package.json", "summary.md", "metrics.json"], "errors_encountered": 0, "output_chars": 6240, "transcript_chars": 0}, "timing": {"total_duration_seconds": 128.0}, "claims": [{"claim": "eslint-config-prettier is a shim, not Prettier", "type": "process", "verified": true, "evidence": "summary.md notes: 'eslint-config-prettier is a shim only, not a Prettier install.' This language is directly informed by the new guardrail added to Phase 3."}], "eval_feedback": {"suggestions": [{"reason": "Both with_skill and old_skill pass all assertions \u2014 the eval does not currently differentiate between the fixed and unfixed skill. The bug (creating .prettierignore) was observed in real-world use but does not reliably reproduce in this controlled eval setup where the agent reads the skill carefully. Consider a more ambiguous prompt, or a project scaffold that includes Prettier-adjacent signals (e.g., an existing .eslintrc that mentions prettier) to increase the likelihood the model reaches for general Prettier knowledge."}], "overall": "All assertions pass but the eval is non-discriminating \u2014 old_skill also passes. The fix adds explicit guardrails that are valuable, but the eval prompt may need to be crafted to more reliably trigger the original bug behavior."}}}, {"id": "eval-switch-prettier-to-oxfmt-old_skill", "prompt": "We're moving from Prettier to oxfmt for formatting. Remove Prettier and replace it with oxfmt. Keep ESLint as-is. We use npm.", "eval_id": 6, "outputs": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxfmt/configuration_schema.json\",\n  \"printWidth\": 100,\n  \"tabWidth\": 2,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n\n  \"sortImports\": true,\n}\n"}, {"name": "eslint.config.js", "type": "text", "content": "import eslint from '@eslint/js';\nimport tseslint from 'typescript-eslint';\nimport reactPlugin from 'eslint-plugin-react';\nimport globals from 'globals';\nimport prettier from 'eslint-config-prettier';\n\nexport default tseslint.config(\n  { ignores: ['**/build/**', '**/dist/**', '**/node_modules/**'] },\n  { languageOptions: { globals: { ...globals.browser, ...globals.node } } },\n  eslint.configs.recommended,\n  ...tseslint.configs.recommended,\n  { plugins: { react: reactPlugin }, rules: { 'no-console': 'warn' } },\n  prettier, // must be last \u2014 disables ESLint formatting rules that conflict with oxfmt\n);\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-typescript-project\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"lint\": \"eslint .\",\n    \"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n  },\n  \"devDependencies\": {\n    \"@eslint/js\": \"9.0.0\",\n    \"eslint\": \"9.0.0\",\n    \"eslint-config-prettier\": \"9.1.0\",\n    \"eslint-plugin-react\": \"7.34.0\",\n    \"globals\": \"15.0.0\",\n    \"oxfmt\": \"0.1.0\",\n    \"typescript-eslint\": \"7.0.0\"\n  }\n}\n"}], "grading": {"expectations": [{"text": ".prettierignore was NOT created", "passed": true, "evidence": "ls -la shows no .prettierignore in outputs dir."}, {"text": ".oxfmtrc.json was created with correct default config", "passed": true, "evidence": ".oxfmtrc.json present (178 bytes) with correct settings."}, {"text": "package.json format script uses oxfmt (not prettier)", "passed": true, "evidence": "package.json format script: \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\". prettier removed from devDependencies."}, {"text": "eslint-config-prettier is present in devDependencies (ESLint+formatter wiring)", "passed": true, "evidence": "package.json devDependencies: \"eslint-config-prettier\": \"9.1.0\"."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1.0}, "execution_metrics": {"tool_calls": {}, "total_tool_calls": 13, "total_steps": 4, "files_created": [".oxfmtrc.json", "eslint.config.js", "package.json", "metrics.json"], "errors_encountered": 0, "output_chars": 1676, "transcript_chars": 0}, "timing": {"total_duration_seconds": 101.3}, "claims": [], "eval_feedback": {"suggestions": [], "overall": "All 4 assertions pass but this matches with_skill \u2014 non-discriminating. Note: old_skill used older pinned versions (oxfmt@0.1.0, eslint-config-prettier@9.1.0) rather than the \u22657-day-old constraint \u2014 the supply-chain version check was not followed correctly."}}}, {"id": "eval-switch-prettier-to-oxfmt-with_skill", "prompt": "We're moving from Prettier to oxfmt for formatting. Remove Prettier and replace it with oxfmt. Keep ESLint as-is. We use npm.", "eval_id": 6, "outputs": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxfmt/configuration_schema.json\",\n  \"printWidth\": 100,\n  \"tabWidth\": 2,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n  \"sortImports\": true\n}\n"}, {"name": "eslint.config.js", "type": "text", "content": "import eslint from '@eslint/js';\nimport tseslint from 'typescript-eslint';\nimport reactPlugin from 'eslint-plugin-react';\nimport globals from 'globals';\nimport prettier from 'eslint-config-prettier';\n\nexport default tseslint.config(\n  { ignores: ['**/build/**', '**/dist/**', '**/node_modules/**'] },\n  { languageOptions: { globals: { ...globals.browser, ...globals.node } } },\n  eslint.configs.recommended,\n  ...tseslint.configs.recommended,\n  { plugins: { react: reactPlugin }, rules: { 'no-console': 'warn' } },\n  prettier, // must be last\n);\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-typescript-project\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"lint\": \"eslint .\",\n    \"lint:fix\": \"eslint . --fix\",\n    \"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n  },\n  \"devDependencies\": {\n    \"@eslint/js\": \"9.0.0\",\n    \"eslint\": \"9.0.0\",\n    \"eslint-config-prettier\": \"10.1.8\",\n    \"eslint-plugin-react\": \"7.34.0\",\n    \"globals\": \"15.0.0\",\n    \"oxfmt\": \"0.54.0\",\n    \"typescript-eslint\": \"7.0.0\"\n  }\n}\n"}], "grading": {"expectations": [{"text": ".prettierignore was NOT created", "passed": true, "evidence": "ls -la shows no .prettierignore in outputs dir. .prettierrc.json was also correctly removed (not kept after switching away from Prettier)."}, {"text": ".oxfmtrc.json was created with correct default config", "passed": true, "evidence": ".oxfmtrc.json present (176 bytes). Settings migrated from .prettierrc.json (printWidth 100, singleQuote, trailingComma all) with sortImports: true added per skill template."}, {"text": "package.json format script uses oxfmt (not prettier)", "passed": true, "evidence": "package.json format script: \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\". prettier removed from devDependencies."}, {"text": "eslint-config-prettier is present in devDependencies (ESLint+formatter wiring)", "passed": true, "evidence": "package.json devDependencies: \"eslint-config-prettier\": \"10.1.8\". eslint.config.js updated with prettier import added last."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1.0}, "execution_metrics": {"tool_calls": {}, "total_tool_calls": 23, "total_steps": 4, "files_created": [".oxfmtrc.json", "eslint.config.js", "package.json", "metrics.json"], "errors_encountered": 0, "output_chars": 1693, "transcript_chars": 0}, "timing": {"total_duration_seconds": 140.4}, "claims": [{"claim": "eslint-config-prettier is a compatibility shim, not Prettier \u2014 no Prettier files created alongside it", "type": "process", "verified": true, "evidence": "No .prettierignore or .prettierrc.json in outputs. Summary explicitly cites the skill's guardrail note."}], "eval_feedback": {"suggestions": [{"reason": "Both this run and old_skill pass all assertions \u2014 the eval is non-discriminating for the second eval in a row. The bug (spurious .prettierignore creation) does not reproduce when agents are asked to explicitly follow the skill. This is likely because the controlled eval prompt primes careful reading. To make this eval discriminating, consider removing the 'follow the skill exactly' framing and instead just providing the skill as context \u2014 letting the model decide how to proceed without the explicit instruction to be faithful."}], "overall": "All 4 assertions pass. Eval is a valid regression guard but does not catch the original bug. The fix adds correct guardrails; the eval confirms no regressions."}}}], "previous_feedback": {}, "previous_outputs": {"eval-greenfield-ts-with_skill": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxfmt/configuration_schema.json\",\n  \"printWidth\": 100,\n  \"tabWidth\": 2,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n\n  \"sortImports\": true,\n}\n"}, {"name": ".oxlintrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxlint/configuration_schema.json\",\n  \"ignorePatterns\": [\"**/build/**\", \"**/dist/**\", \"**/node_modules/**\"],\n  \"env\": {\n    \"browser\": true,\n    \"node\": true\n  },\n  \"plugins\": [\"typescript\", \"react\", \"import\"],\n  \"categories\": {\n    \"correctness\": \"error\"\n  },\n  \"rules\": {\n    \"eslint/no-console\": \"warn\",\n    \"typescript/use-unknown-in-catch-callback-variable\": \"error\",\n\n    // Rules from the original ESLint config not enabled by default in Oxlint.\n    \"eslint/no-array-constructor\": \"error\",\n    \"eslint/no-case-declarations\": \"error\",\n    \"eslint/no-empty\": \"error\",\n    \"eslint/no-empty-function\": \"error\",\n    \"eslint/no-fallthrough\": \"error\",\n    \"eslint/no-prototype-builtins\": \"error\",\n    \"eslint/no-redeclare\": \"error\",\n    \"eslint/no-regex-spaces\": \"error\",\n    \"eslint/no-unexpected-multiline\": \"error\",\n    \"typescript/adjacent-overload-signatures\": \"error\",\n    \"typescript/array-type\": \"error\",\n    \"typescript/ban-ts-comment\": \"error\",\n    \"typescript/ban-tslint-comment\": \"error\",\n    \"typescript/class-literal-property-style\": \"error\",\n    \"typescript/consistent-generic-constructors\": \"error\",\n    \"typescript/consistent-indexed-object-style\": \"error\",\n    \"typescript/consistent-type-assertions\": \"error\",\n    \"typescript/consistent-type-definitions\": \"error\",\n    \"typescript/no-confusing-non-null-assertion\": \"error\",\n    \"typescript/no-empty-object-type\": \"error\",\n    \"typescript/no-explicit-any\": \"error\",\n    \"typescript/no-inferrable-types\": \"error\",\n    \"typescript/no-namespace\": \"error\",\n    \"typescript/no-require-imports\": \"error\",\n    \"typescript/no-unnecessary-type-constraint\": \"error\",\n    \"typescript/no-unsafe-function-type\": \"error\",\n    \"typescript/prefer-for-of\": \"error\",\n    \"typescript/prefer-function-type\": \"error\",\n    \"react/display-name\": \"error\",\n    \"react/jsx-no-comment-textnodes\": \"error\",\n    \"react/jsx-no-target-blank\": \"error\",\n    \"react/no-unescaped-entities\": \"error\",\n    \"react/no-unknown-property\": \"error\",\n    \"react/rules-of-hooks\": \"error\"\n  }\n}\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-app\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"lint\": \"oxlint\",\n    \"lint:fix\": \"oxlint --fix\",\n    \"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n  }\n}\n"}, {"name": "summary.md", "type": "text", "content": "# Lint Setup Summary \u2014 greenfield TypeScript React project\n\n## Project state at start\n\n- `package.json` present (no scripts, no dependencies)\n- No lockfile \u2014 package manager: **npm**\n- No existing lint or format config\n\n## Tools selected\n\n- Linter: **oxlint**\n- Formatter: **oxfmt**\n- No ESLint selected, so no compatibility wiring needed.\n\n## Files written\n\n| File | Purpose |\n|------|---------|\n| `.oxlintrc.json` | oxlint config \u2014 correctness category as error, TypeScript + React + import plugins, explicit rules matching a standard TypeScript React ESLint baseline |\n| `.oxfmtrc.json` | oxfmt config \u2014 100 print width, 2-space indent, single quotes, trailing commas, import sorting |\n| `package.json` | Updated scripts: `lint`, `lint:fix`, `format` |\n\n## Install commands that would be run\n\n```bash\nnpm install --save-dev oxlint\nnpm install --save-dev oxfmt\n```\n\n## package.json scripts (final)\n\n```json\n\"lint\":     \"oxlint\",\n\"lint:fix\": \"oxlint --fix\",\n\"format\":   \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n```\n\n## Next step\n\nTo enforce lint and format automatically on commit, use the `aif-git-hooks-setup` skill.\n"}], "eval-greenfield-ts-without_skill": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"indentWidth\": 2,\n  \"lineWidth\": 100,\n  \"trailingCommas\": \"all\",\n  \"singleQuote\": true,\n  \"semi\": true,\n  \"jsxSingleQuote\": false\n}\n"}, {"name": ".oxlintrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxlint/configuration_schema.json\",\n  \"plugins\": [\"react\", \"typescript\"],\n  \"rules\": {\n    \"no-unused-vars\": \"error\",\n    \"no-console\": \"warn\",\n    \"eqeqeq\": \"error\",\n    \"react/jsx-uses-react\": \"off\",\n    \"react/react-in-jsx-scope\": \"off\",\n    \"@typescript-eslint/no-explicit-any\": \"warn\"\n  },\n  \"env\": {\n    \"browser\": true,\n    \"es2022\": true\n  },\n  \"ignorePatterns\": [\"node_modules\", \"dist\", \"build\", \"coverage\"]\n}\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-app\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"lint\": \"oxlint .\",\n    \"lint:fix\": \"oxlint . --fix\",\n    \"format\": \"oxfmt .\",\n    \"format:check\": \"oxfmt . --check\"\n  }\n}\n"}, {"name": "summary.md", "type": "text", "content": "# Lint Setup Summary \u2014 Greenfield TypeScript React Project (without skill)\n\n## What was done\n\n### oxlint\n- Created `.oxlintrc.json` with `react` and `typescript` plugins enabled.\n- Rules configured for TypeScript React: no-unused-vars (error), no-console (warn), eqeqeq (error), React 17+ JSX transform (react-in-jsx-scope off), @typescript-eslint/no-explicit-any (warn).\n- ignorePatterns excludes node_modules, dist, build, coverage.\n- Added lint and lint:fix scripts to package.json.\n\n### oxfmt\n- Created `.oxfmtrc.json` with formatting preferences (2-space indent, 100 char line width, trailing commas, single quotes, semicolons).\n- Added format and format:check scripts to package.json.\n\n**WARNING:** `oxfmt` does not exist as a real npm package or standalone tool (as of August 2025). The oxc project provides `oxlint` for linting, but there is no published `oxfmt` formatter. The user likely meant one of:\n- Biome (`@biomejs/biome`) \u2014 the most popular fast formatter for JS/TS\n- The experimental oxc formatter (not yet released as a standalone package)\n\nThe `.oxfmtrc.json` and format scripts were created as requested but will not work until a real `oxfmt` binary is available.\n\n## Install commands that would be run\n\n```bash\n# Install oxlint\nnpm install --save-dev oxlint\n\n# oxfmt does not exist; recommended alternative:\n# npm install --save-dev --save-exact @biomejs/biome\n```\n\n## Files created/modified\n\n- `.oxlintrc.json` \u2014 oxlint configuration\n- `.oxfmtrc.json` \u2014 oxfmt configuration (placeholder; tool does not exist)\n- `package.json` \u2014 added lint, lint:fix, format, format:check scripts\n"}], "eval-partial-add-oxfmt-with_skill": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxfmt/configuration_schema.json\",\n  \"printWidth\": 100,\n  \"tabWidth\": 2,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n\n  \"sortImports\": true,\n}\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-app\",\n  \"version\": \"1.0.0\",\n  \"devDependencies\": {\n    \"oxfmt\": \"0.54.0\",\n    \"oxlint\": \"1.69.0\"\n  },\n  \"scripts\": {\n    \"lint\": \"oxlint\",\n    \"lint:fix\": \"oxlint --fix\",\n    \"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n  }\n}\n"}], "eval-partial-add-oxfmt-without_skill": [{"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"printWidth\": 80,\n  \"tabWidth\": 2,\n  \"useTabs\": false,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n  \"bracketSpacing\": true\n}\n"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"my-app\",\n  \"version\": \"1.0.0\",\n  \"devDependencies\": {\n    \"oxfmt\": \"0.53.0\",\n    \"oxlint\": \"1.69.0\"\n  },\n  \"scripts\": {\n    \"lint\": \"oxlint\",\n    \"format\": \"oxfmt .\",\n    \"format:check\": \"oxfmt --check .\"\n  }\n}\n"}, {"name": "summary.md", "type": "text", "content": "# oxfmt Addition Summary\n\n## What was done\n\nThe project already had oxlint configured. oxfmt was added for formatting.\n\n## Version selected\n\n- **oxfmt 0.53.0** (published 2026-06-01, 9 days old)\n- Latest version 0.54.0 was skipped \u2014 published 2026-06-08 (only 3 days old), within the 7-day supply-chain cooldown.\n\n## Files created/modified\n\n### `.oxfmtrc.json` (new)\nCreated with sensible defaults:\n- 80-character print width\n- 2-space indentation\n- Single quotes\n- Trailing commas\n- Bracket spacing\n\n### `package.json` (modified)\n- Added `oxfmt: \"0.53.0\"` to `devDependencies`\n- Added `format` script: `oxfmt .`\n- Added `format:check` script: `oxfmt --check .` (for CI use)\n\n## Commands to run\n\n```sh\npnpm add -D oxfmt@0.53.0\n```\n\nTo format the project:\n```sh\npnpm format\n```\n\nTo check formatting in CI:\n```sh\npnpm format:check\n```\n"}], "eval-multi-ecosystem-go-shell-with_skill": [{"name": ".golangci.yaml", "type": "text", "content": "version: '2'\n\nformatters:\n  enable:\n    - gofmt\n    - goimports\n  settings:\n    gofmt:\n      rewrite-rules:\n        - pattern: interface{}\n          replacement: any\n"}, {"name": ".shellcheckrc", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,c2hlbGw9YmFzaAplbmFibGU9YWxsCmRpc2FibGU9U0MyMDg2Cg=="}, {"name": "Makefile", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,U0hFTEwgOj0gL2Jpbi9iYXNoCkJJTiAgIDo9ICQoQ1VSRElSKS9iaW4KCkdPTEFOR0NJX1ZFUlNJT04gOj0gdjIuMTIuMgpHT0xBTkdDSV9MSU5UICAgIDo9ICQoQklOKS9nb2xhbmdjaS1saW50LSQoR09MQU5HQ0lfVkVSU0lPTikKCiQoQklOKToKCW1rZGlyIC1wICQoQklOKQoKJChHT0xBTkdDSV9MSU5UKTogfCAkKEJJTikKCWN1cmwgLXNTZkwgaHR0cHM6Ly9nb2xhbmdjaS1saW50LnJ1bi9pbnN0YWxsLnNoIHwgc2ggLXMgLS0gLWIgJChCSU4pICQoR09MQU5HQ0lfVkVSU0lPTikKCW12ICQoQklOKS9nb2xhbmdjaS1saW50ICRACgouUEhPTlk6IHRvb2xzCnRvb2xzOiAkKEdPTEFOR0NJX0xJTlQpCgouUEhPTlk6IGxpbnQKbGludDogJChHT0xBTkdDSV9MSU5UKQoJJChHT0xBTkdDSV9MSU5UKSBydW4K"}], "eval-multi-ecosystem-go-shell-without_skill": [{"name": ".golangci.yaml", "type": "text", "content": "run:\n  timeout: 5m\n  modules-download-mode: readonly\n\nlinters:\n  enable:\n    - errcheck\n    - gosimple\n    - govet\n    - ineffassign\n    - staticcheck\n    - unused\n    - gofmt\n    - goimports\n    - revive\n    - bodyclose\n    - noctx\n    - exhaustive\n\nlinters-settings:\n  gofmt:\n    simplify: true\n  goimports:\n    local-prefixes: myapp/server\n  revive:\n    rules:\n      - name: exported\n      - name: var-naming\n      - name: indent-error-flow\n\nissues:\n  exclude-rules:\n    - path: _test\\.go\n      linters:\n        - errcheck\n  max-issues-per-linter: 50\n  max-same-issues: 10"}, {"name": ".shellcheckrc", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,IyBTaGVsbENoZWNrIGNvbmZpZ3VyYXRpb24KIyBodHRwczovL3d3dy5zaGVsbGNoZWNrLm5ldC93aWtpL0lnbm9yZQoKIyBUYXJnZXQgc2hlbGwgZGlhbGVjdCDigJQgbWF0Y2hlcyB0aGUgc2hlYmFuZyB1c2VkIGluIGRlcGxveS5zaApzaGVsbD1iYXNoCgojIFRyZWF0IHNvdXJjZWQgZmlsZXMgYXMgZXh0ZXJuYWwgKGRvbid0IGZvbGxvdyB0aGVtKQpleHRlcm5hbC1zb3VyY2VzPWZhbHNlCgojIERpc2FibGUgc3BlY2lmaWMgY2hlY2tzIHRoYXQgdGVuZCB0byBwcm9kdWNlIG5vaXNlIGluIGRlcGxveW1lbnQgc2NyaXB0czoKIyBTQzIwMzQg4oCUIHZhcmlhYmxlIGFwcGVhcnMgdW51c2VkIChjb21tb24gd2l0aCBleHBvcnRlZCBlbnYgdmFycykKIyBTQzEwOTEg4oCUIG5vdCBmb2xsb3dpbmcgc291cmNlZCBmaWxlCmRpc2FibGU9U0MxMDkxCg=="}, {"name": "Makefile", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,LlBIT05ZOiBsaW50IGxpbnQtZ28gbGludC1zaGVsbCBpbnN0YWxsLXRvb2xzCgojIyBsaW50OiBydW4gYWxsIGxpbnRlcnMgKEdvICsgc2hlbGwpCmxpbnQ6IGxpbnQtZ28gbGludC1zaGVsbAoKIyMgbGludC1nbzogcnVuIGdvbGFuZ2NpLWxpbnQgb24gR28gc291cmNlCmxpbnQtZ286Cglnb2xhbmdjaS1saW50IHJ1biAuLy4uLgoKIyMgbGludC1zaGVsbDogcnVuIHNoZWxsY2hlY2sgb24gYWxsIHNoZWxsIHNjcmlwdHMKbGludC1zaGVsbDoKCXNoZWxsY2hlY2sgJChzaGVsbCBmaW5kIC4gLW5hbWUgJyouc2gnIC1ub3QgLXBhdGggJy4vdmVuZG9yLyonKQoKIyMgaW5zdGFsbC10b29sczogaW5zdGFsbCBsaW50aW5nIHRvb2xzIChydW4gb25jZSkKaW5zdGFsbC10b29sczoKCUBlY2hvICJJbnN0YWxsaW5nIGdvbGFuZ2NpLWxpbnQuLi4iCgkjIGdvIGluc3RhbGwgZ2l0aHViLmNvbS9nb2xhbmdjaS9nb2xhbmdjaS1saW50L2NtZC9nb2xhbmdjaS1saW50QGxhdGVzdAoJQGVjaG8gIkluc3RhbGxpbmcgc2hlbGxjaGVjay4uLiIKCSMgYnJldyBpbnN0YWxsIHNoZWxsY2hlY2sgICAgICAgICMgbWFjT1MKCSMgYXB0LWdldCBpbnN0YWxsIHNoZWxsY2hlY2sgICAgICMgRGViaWFuL1VidW50dQoJQGVjaG8gIkRvbmUuIFJ1biAnbWFrZSBsaW50JyB0byBsaW50IHRoZSBwcm9qZWN0LiIK"}, {"name": "summary.md", "type": "text", "content": "# Lint Setup Summary\n\n## Ecosystems detected\n\n| Ecosystem | Signal file | Tool chosen |\n|-----------|-------------|-------------|\n| Go        | `go.mod`    | golangci-lint |\n| Shell     | `deploy.sh` | shellcheck  |\n\n---\n\n## Files created\n\n| File | Purpose |\n|------|---------|\n| `.golangci.yaml` | golangci-lint configuration \u2014 enables errcheck, staticcheck, gofmt, goimports, revive, and more |\n| `.shellcheckrc`  | shellcheck configuration \u2014 targets bash dialect, suppresses source-follow noise |\n| `Makefile`       | Convenience targets: `make lint`, `make lint-go`, `make lint-shell`, `make install-tools` |\n\n---\n\n## Commands to run\n\n### One-time tool installation\n\n```bash\n# golangci-lint (Go)\ngo install github.com/golangci/golangci-lint/cmd/golangci-lint@latest\n\n# shellcheck (macOS)\nbrew install shellcheck\n\n# shellcheck (Debian/Ubuntu)\nsudo apt-get install shellcheck\n```\n\n### Lint\n\n```bash\n# All linters\nmake lint\n\n# Go only\nmake lint-go\n# equivalent: golangci-lint run ./...\n\n# Shell only\nmake lint-shell\n# equivalent: shellcheck deploy.sh\n```\n\n---\n\n## Notes\n\n- `golangci-lint` runs multiple Go linters in one pass; the enabled set covers correctness (errcheck, govet), style (gofmt, goimports, revive), and dead-code (unused, ineffassign).\n- `shellcheck` reads `.shellcheckrc` automatically when run from the project root.\n- The `Makefile` target uses `find` to pick up any `*.sh` file added in the future, not just `deploy.sh`.\n- No `package.json` or Node tooling was introduced; this remains a pure Go + shell project.\n"}], "eval-teacher-workspace-with_skill": [{"name": ".golangci.yaml", "type": "text", "content": "version: '2'\n\nformatters:\n  enable:\n    - gofmt\n    - goimports\n  settings:\n    gofmt:\n      rewrite-rules:\n        - pattern: interface{}\n          replacement: any\n"}, {"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxfmt/configuration_schema.json\",\n  \"printWidth\": 100,\n  \"tabWidth\": 2,\n  \"singleQuote\": true,\n  \"trailingComma\": \"all\",\n\n  \"sortImports\": true,\n}\n"}, {"name": ".oxlintrc.json", "type": "text", "content": "{\n  \"$schema\": \"./node_modules/oxlint/configuration_schema.json\",\n  \"ignorePatterns\": [\"**/build/**\", \"**/dist/**\", \"**/node_modules/**\"],\n  \"env\": {\n    \"browser\": true,\n    \"node\": true\n  },\n  \"plugins\": [\"typescript\", \"react\", \"import\"],\n  \"categories\": {\n    \"correctness\": \"error\"\n  },\n  \"rules\": {\n    \"eslint/no-console\": \"warn\",\n    \"typescript/use-unknown-in-catch-callback-variable\": \"error\",\n\n    // Rules from the original ESLint config not enabled by default in Oxlint.\n    \"eslint/no-array-constructor\": \"error\",\n    \"eslint/no-case-declarations\": \"error\",\n    \"eslint/no-empty\": \"error\",\n    \"eslint/no-empty-function\": \"error\",\n    \"eslint/no-fallthrough\": \"error\",\n    \"eslint/no-prototype-builtins\": \"error\",\n    \"eslint/no-redeclare\": \"error\",\n    \"eslint/no-regex-spaces\": \"error\",\n    \"eslint/no-unexpected-multiline\": \"error\",\n    \"typescript/adjacent-overload-signatures\": \"error\",\n    \"typescript/array-type\": \"error\",\n    \"typescript/ban-ts-comment\": \"error\",\n    \"typescript/ban-tslint-comment\": \"error\",\n    \"typescript/class-literal-property-style\": \"error\",\n    \"typescript/consistent-generic-constructors\": \"error\",\n    \"typescript/consistent-indexed-object-style\": \"error\",\n    \"typescript/consistent-type-assertions\": \"error\",\n    \"typescript/consistent-type-definitions\": \"error\",\n    \"typescript/no-confusing-non-null-assertion\": \"error\",\n    \"typescript/no-empty-object-type\": \"error\",\n    \"typescript/no-explicit-any\": \"error\",\n    \"typescript/no-inferrable-types\": \"error\",\n    \"typescript/no-namespace\": \"error\",\n    \"typescript/no-require-imports\": \"error\",\n    \"typescript/no-unnecessary-type-constraint\": \"error\",\n    \"typescript/no-unsafe-function-type\": \"error\",\n    \"typescript/prefer-for-of\": \"error\",\n    \"typescript/prefer-function-type\": \"error\",\n    \"react/display-name\": \"error\",\n    \"react/jsx-no-comment-textnodes\": \"error\",\n    \"react/jsx-no-target-blank\": \"error\",\n    \"react/no-unescaped-entities\": \"error\",\n    \"react/no-unknown-property\": \"error\",\n    \"react/rules-of-hooks\": \"error\"\n  }\n}\n"}, {"name": "Makefile", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,U0hFTEwgOj0gL2Jpbi9iYXNoCkJJTiAgIDo9ICQoQ1VSRElSKS9iaW4KCkdPTEFOR0NJX1ZFUlNJT04gOj0gdjIuMTIuMgpHT0xBTkdDSV9MSU5UICAgIDo9ICQoQklOKS9nb2xhbmdjaS1saW50LSQoR09MQU5HQ0lfVkVSU0lPTikKCiQoQklOKToKCW1rZGlyIC1wICQoQklOKQoKJChHT0xBTkdDSV9MSU5UKTogfCAkKEJJTikKCWN1cmwgLXNTZkwgaHR0cHM6Ly9nb2xhbmdjaS1saW50LnJ1bi9pbnN0YWxsLnNoIHwgc2ggLXMgLS0gLWIgJChCSU4pICQoR09MQU5HQ0lfVkVSU0lPTikKCW12ICQoQklOKS9nb2xhbmdjaS1saW50ICRACgouUEhPTlk6IHRvb2xzCnRvb2xzOiAkKEdPTEFOR0NJX0xJTlQpCgouUEhPTlk6IGxpbnQKbGludDogJChHT0xBTkdDSV9MSU5UKQoJJChHT0xBTkdDSV9MSU5UKSBydW4K"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"teacher-workspace\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"lint\": \"oxlint\",\n    \"lint:fix\": \"oxlint --fix\",\n    \"format\": \"oxfmt --check \\\"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\\\"\"\n  },\n  \"devDependencies\": {\n    \"oxlint\": \"0.16.6\",\n    \"oxfmt\": \"0.0.4\"\n  }\n}\n"}], "eval-teacher-workspace-without_skill": [{"name": ".golangci.yaml", "type": "text", "content": "version: \"2\"\n\nrun:\n  timeout: 5m\n  modules-download-mode: readonly\n\nlinters:\n  default: none\n  enable:\n    - errcheck\n    - gosimple\n    - govet\n    - ineffassign\n    - staticcheck\n    - unused\n    - gofmt\n    - goimports\n    - misspell\n    - revive\n    - gocritic\n    - bodyclose\n    - noctx\n    - sqlclosecheck\n\nlinters-settings:\n  goimports:\n    local-prefixes: github.com/string-sg/teacher-workspace\n  revive:\n    rules:\n      - name: exported\n        severity: warning\n      - name: unexported-return\n        severity: warning\n  gocritic:\n    enabled-tags:\n      - diagnostic\n      - performance\n      - style\n\nissues:\n  exclude-rules:\n    - path: \"_test\\\\.go\"\n      linters:\n        - errcheck\n        - gocritic\n  max-issues-per-linter: 50\n  max-same-issues: 10\n\noutput:\n  formats:\n    - format: colored-line-number\n"}, {"name": ".oxfmtrc.json", "type": "text", "content": "{\n  \"indentWidth\": 2,\n  \"lineWidth\": 100,\n  \"quoteStyle\": \"single\",\n  \"jsxQuoteStyle\": \"double\",\n  \"quoteProperties\": \"asNeeded\",\n  \"trailingCommas\": \"all\",\n  \"semicolons\": true,\n  \"bracketSpacing\": true,\n  \"bracketSameLine\": false,\n  \"arrowParens\": \"always\",\n  \"endOfLine\": \"lf\",\n  \"singleAttributePerLine\": false\n}\n"}, {"name": ".oxlintrc.json", "type": "text", "content": "{\n  \"$schema\": \"https://raw.githubusercontent.com/oxc-project/oxc/main/crates/oxc_linter/src/rules.json\",\n  \"plugins\": [\"typescript\", \"unicorn\", \"react\"],\n  \"rules\": {\n    \"no-unused-vars\": \"warn\",\n    \"no-console\": \"warn\",\n    \"no-debugger\": \"error\",\n    \"eqeqeq\": \"error\",\n    \"typescript/no-explicit-any\": \"warn\",\n    \"typescript/no-unused-vars\": \"warn\"\n  },\n  \"env\": {\n    \"browser\": true,\n    \"node\": true,\n    \"es2022\": true\n  },\n  \"ignore\": {\n    \"pattern\": [\n      \"node_modules/**\",\n      \"dist/**\",\n      \"build/**\",\n      \"coverage/**\",\n      \"*.min.js\"\n    ]\n  }\n}\n"}, {"name": "Makefile", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,LlBIT05ZOiBsaW50IGxpbnQtanMgbGludC1nbyBmbXQgZm10LWpzIGZtdC1jaGVjayBmbXQtY2hlY2stanMgZm10LWNoZWNrLWdvIGluc3RhbGwKCiMjIEluc3RhbGwgYWxsIGxpbnQvZm10IHRvb2xzCmluc3RhbGw6CglwbnBtIGFkZCAtLXNhdmUtZGV2IG94bGludCBAb3hjLXRvb2xzL294Zm10CglnbyBpbnN0YWxsIGdpdGh1Yi5jb20vZ29sYW5nY2kvZ29sYW5nY2ktbGludC9jbWQvZ29sYW5nY2ktbGludEBsYXRlc3QKCiMjIFJ1biBhbGwgbGludGVycwpsaW50OiBsaW50LWpzIGxpbnQtZ28KCiMjIExpbnQgSlMvVFMgZmlsZXMgd2l0aCBveGxpbnQKbGludC1qczoKCXBucG0gb3hsaW50IC4KCiMjIExpbnQgR28gZmlsZXMgd2l0aCBnb2xhbmdjaS1saW50CmxpbnQtZ286CgljZCBzZXJ2ZXIgJiYgZ29sYW5nY2ktbGludCBydW4gLi8uLi4KCiMjIEZvcm1hdCBhbGwgZmlsZXMKZm10OiBmbXQtanMKCiMjIEZvcm1hdCBKUy9UUyBmaWxlcyB3aXRoIG94Zm10CmZtdC1qczoKCXBucG0gb3hmbXQgLS13cml0ZSAuCgojIyBDaGVjayBmb3JtYXR0aW5nIHdpdGhvdXQgd3JpdGluZyAoQ0kgbW9kZSkKZm10LWNoZWNrOiBmbXQtY2hlY2stanMgZm10LWNoZWNrLWdvCgojIyBDaGVjayBKUy9UUyBmb3JtYXR0aW5nCmZtdC1jaGVjay1qczoKCXBucG0gb3hmbXQgLS1jaGVjayAuCgojIyBDaGVjayBHbyBmb3JtYXR0aW5nCmZtdC1jaGVjay1nbzoKCWNkIHNlcnZlciAmJiBnb2ZtdCAtbCAuIHwgZ3JlcCAtcSAuICYmIGVjaG8gIkdvIGZpbGVzIG5lZWQgZm9ybWF0dGluZyIgJiYgZXhpdCAxIHx8IHRydWUK"}, {"name": "package.json", "type": "text", "content": "{\n  \"name\": \"teacher-workspace\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"lint\": \"oxlint .\",\n    \"lint:fix\": \"oxlint --fix .\",\n    \"fmt\": \"oxfmt --write .\",\n    \"fmt:check\": \"oxfmt --check .\"\n  },\n  \"devDependencies\": {\n    \"oxlint\": \"latest\",\n    \"@oxc-tools/oxfmt\": \"latest\"\n  }\n}\n"}]}, "benchmark": {"metadata": {"skill_name": "aif-lint-setup", "skill_path": "<path/to/skill>", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-06-15T08:07:34Z", "evals_run": [], "runs_per_configuration": 3}, "runs": [], "run_summary": {"delta": {"pass_rate": "+0.00", "time_seconds": "+0.0", "tokens": "+0"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

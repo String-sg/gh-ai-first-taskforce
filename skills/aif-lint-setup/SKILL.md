@@ -83,6 +83,8 @@ Ask the user to select from each group. Multiple tools from each group can be se
 
 ## Phase 3: Install and Configure
 
+> **Only create the files explicitly listed in each tool's section below. Do not write additional config or ignore files based on general knowledge of these tools.**
+
 ### Detect the package manager first
 
 Check for lockfiles and config files in the repo root — do this before running any install command:
@@ -398,7 +400,9 @@ Add to `package.json` scripts:
 
 **ESLint + any formatter (Prettier or oxfmt)**
 
-Install `eslint-config-prettier` to disable ESLint's formatting rules, which would otherwise conflict:
+Install `eslint-config-prettier` to disable ESLint's formatting rules, which would otherwise conflict.
+
+> **Note:** `eslint-config-prettier` is a compatibility shim that disables ESLint's formatting rules — it is **not** Prettier. Installing it does not mean Prettier is in use. Do **not** create `.prettierrc.json`, `.prettierignore`, or any other Prettier-specific files unless the user explicitly selected Prettier as their formatter.
 
 ```bash
 # npm
