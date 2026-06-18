@@ -35,7 +35,7 @@ gh extension upgrade ai-first-taskforce && gh ai-first-taskforce setup
 
 The AI-First Taskforce aims to increase developer productivity through practical application of generative AI in software engineering workflows.
 
-See [**AI-First Engineering Strategy**](docs/ai-first-engineering-strategy.md) for the practitioner roadmap and playbook — how teams move from AI-assisted to AI-first work, safely.
+See [**AI-First Engineering Strategy**](docs/ai-first-engineering-strategy.md) — how AI modernizes software engineering: the progression from ad-hoc AI use to structured agentic software engineering, and how teams adopt it safely.
 
 ### Ongoing projects
 
@@ -71,7 +71,7 @@ gh-ai-first-taskforce/
 │   ├── aif-split-issue/
 │   └── aif-update-npm-dependencies/
 ├── docs/
-│   └── ai-first-engineering-strategy.md  Adoption roadmap + build strategy
+│   └── ai-first-engineering-strategy.md  How AI modernizes engineering — the progression and toolkit
 ├── templates/
 │   ├── CLAUDE.md                        Generalized CLAUDE.md — copy to a new project before build week
 │   ├── trial-review.md                  Blank post-trial review template

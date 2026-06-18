@@ -9,7 +9,7 @@ The skills are distributed as a **`gh` CLI extension** — running `gh ai-first-
 
 Most contributions are prose, templates, or skills — not application code. This guide covers the *how*; [`CLAUDE.md`](CLAUDE.md) is the source of truth for the repo's *rules* — please read it before you start.
 
-The thinking behind how the toolkit is built — where capabilities come from and the bar they must clear — lives in **Part 3 of the [strategy doc](docs/ai-first-engineering-strategy.md)**. A worthwhile read before adding a skill.
+The thinking behind how the toolkit is built — where capabilities come from and why — lives in **Section 6 of the [strategy doc](docs/ai-first-engineering-strategy.md)**. A worthwhile read before adding a skill.
 
 ---
 
@@ -87,7 +87,7 @@ hooks/                           Git hook scripts wired up by Lefthook
   chore: remove obsolete bats tests for deleted harness
   ```
 - **Separate unrelated concerns into separate commits** — a reviewer should be able to read one commit and understand one change.
-- Dogfood the toolkit: `aif-create-issue` is a good way to scope work, and `aif-code-review` to self-review before you open the PR.
+- Dogfood the toolkit: use `aif-create-issue` to scope work, and `aif-code-review` when reviewing a PR (it posts findings as inline comments).
 
 ---
 
@@ -113,7 +113,7 @@ Guidelines:
 
 ### The quality bar
 
-Before a skill ships it must clear the bar described in the strategy doc (Ch. 10):
+Before a skill ships it must clear this bar:
 
 - **Evals pass, with variance analysis** to confirm the result is stable across runs, not a lucky single pass. The `skill-creator` skill helps build, eval, and tune a skill's triggering.
 - **Generalized** — no project-specific names, commit hashes, or org-specific tooling. Replace specifics with `[ ]` placeholders.
