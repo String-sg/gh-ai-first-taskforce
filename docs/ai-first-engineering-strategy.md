@@ -37,7 +37,7 @@ Moving a repo up a stage is itself a repeatable loop — the same loop the taskf
 1. **Pilot** the next-stage practice on a real piece of work (a trial, a feature branch). Don't roll it out broadly first.
 2. **Wire the guardrail** that makes the new autonomy safe *before* relying on the autonomy — the hook, the review skill, the cooldown, the classification check.
 3. **Measure** against the signals in Chapter 7 so you know the change helped.
-4. **Feed gaps back** — when the AI does something the rules should have caught, capture it in the gaps log, then harden the `CLAUDE.md` rule or the skill so it can't recur. This is how the team's guardrails compound over time.
+4. **Feed gaps back** — when the AI does something the rules should have caught, capture it (in a trial's gaps log or the project's own backlog), then harden the `CLAUDE.md` rule or the skill so it can't recur. This is how the team's guardrails compound over time.
 
 The loop never ends. Even a Delegate-stage repo keeps finding gaps and feeding them back — that is what keeps delegation safe.
 
@@ -114,13 +114,17 @@ You cannot delegate what you cannot measure. Track a small, honest set of signal
 - **Quality** — review findings per PR and their severity; escaped defects; gate failure rate (a rising rate caught *before* `main` is healthy).
 - **Adoption** — number of repos with shared skills + `CLAUDE.md`; which maturity stage each repo sits at; skill usage.
 
-**The learning engine — trials.** The taskforce's trial flow is how a practice gets proven before it spreads:
+**The learning engine — trials and live projects.** Trials are the structured way a practice gets proven before it spreads, but they are not the only source: active development projects surface just as many gaps and toolkit ideas in the course of real work. Both feed the same backlog.
+
+Trials follow a defined flow:
 1. Set goals and success criteria up front (`templates/trial-goals.md`).
 2. Run the build with the skills and guardrails in place.
 3. Log gaps as they emerge — don't wait for the end.
 4. Write the post-trial review (`templates/trial-review.md`) and **feed the gaps back** into `templates/CLAUDE.md` and the skills, so the whole community inherits the fix.
 
-**What good looks like:** every claim that "AI-first works here" is backed by a trial review and a metric, and every gap a trial surfaces has become a rule or a skill that prevents its recurrence.
+Active projects don't have a trial's ceremony, so make surfacing cheap: when a gap or a reusable idea appears mid-build, capture it the moment it's noticed and route it to the same backlog a trial would feed. A good idea from a live project is as valid a build signal as a logged trial gap.
+
+**What good looks like:** every claim that "AI-first works here" is backed by evidence — a trial review or live-project metrics — and every gap surfaced, whether in a trial or active development, has become a rule or a skill that prevents its recurrence.
 
 ---
 
@@ -132,7 +136,7 @@ Parts 1–2 are about *using* AI-first practices. This part is about *producing*
 
 The producer side mirrors the consumer thesis: **earn autonomy with verification.** A capability we ship grants its users autonomy (they trust it to do work); we pay for that the same way teams do — with proof it works before anyone relies on it.
 
-- **Demand-driven, not speculative.** Capabilities come from real gaps that surfaced in real trials. A gap that appears in more than one trial is the signal to build. We don't build skills for problems no one has hit yet.
+- **Demand-driven, not speculative.** Capabilities come from real gaps that surface in real work — both structured trials and active development projects. A gap that recurs across projects is the signal to build. We don't build skills for problems no one has hit yet.
 - **Dogfood the loop.** We build the toolkit using the same AI-first loop we advocate — brainstorm → issue → implement → review → verify — against this repo's own `CLAUDE.md`, hooks, and review skills. If a practice isn't good enough to build our own tools with, it isn't good enough to ship.
 - **Generalize ruthlessly.** A capability sourced from one project must be stripped of project-specific names, commit hashes, and org-specific tooling — replaced with `[ ]` placeholders — and the originating gap cited in a comment. The rule that ships must be general even when the lesson was specific.
 - **Earn trust before shipping.** Nothing distributes until it has cleared its quality bar (Chapter 10). An unproven skill is a liability: it fails silently inside someone else's workflow.
@@ -143,7 +147,7 @@ The producer side mirrors the consumer thesis: **earn autonomy with verification
 
 The spine of the build engine. Every capability — a rule, a skill, or a tool — moves through six phases:
 
-1. **Surface.** A gap appears in a trial's gaps log. When it recurs across trials, it becomes a build candidate. (Source: `templates/trial-review.md` gaps logs.)
+1. **Surface.** A gap or opportunity shows up in real use — a trial's gaps log, or an active development project where a recurring pain point or a good idea points to a reusable capability. When it recurs across projects, it becomes a build candidate. (Trials capture these in `templates/trial-review.md` gaps logs; active projects surface them ad hoc — route them to the same backlog.)
 2. **Build.** Choose the form (Chapter 10) and build it with the AI-first loop, using `skill-creator` / `writing-skills` for skills.
 3. **Prove.** Validate against the quality bar (Chapter 10) — skill evals with variance analysis for skills, automated tests for tooling, plus the repo's lint, hooks, and secret scan.
 4. **Generalize.** Strip project specifics to `[ ]` placeholders; cite the originating gap; confirm it reads cleanly with no project context.
