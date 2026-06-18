@@ -51,7 +51,7 @@ The guardrails that make agentic work safe:
 - **Review against written standards.** Changes are reviewed against agreed standards rather than skimmed, so the human's role is to adjudicate findings rather than be the first line of detection.
 - **Dependency cooldown.** Don't adopt a dependency release the moment it's published — wait out a short cooldown so freshly-published malicious versions are caught before they enter the project (our default is ≥ 7 days).
 - **Secrets and branch protection.** Scan changes for secrets before they land, and block direct pushes to the main branch so work goes through review — enforced with automated checks (we use git hooks).
-- **Data sensitivity.** A project's data classification is known before code or data reaches an external model, and the work is matched to an eligible environment (for example, OPEN / OFFICIAL / OFFICIAL-CLOSED). For restricted projects, sensitive material stays on-device.
+- **Data sensitivity.** A project's data classification is known before code or data reaches an external model, and the work is matched to an environment approved for that classification (in our setup, the Greenlane OPEN / OFFICIAL / OFFICIAL-CLOSED tiers). For restricted projects, sensitive material stays on-device.
 
 This is why the shift is carried by a shared toolkit, not by exhortation. A team does not reach the structured end of the continuum by resolving to try harder; it gets there because each guardrail above exists as something it can **install** — a rule, a check, or a review workflow — instead of rebuilding it. Every capability a team adopts is a concrete step up the progression, with the matching guardrail already in hand. Section 6 covers how that toolkit is produced.
 
@@ -85,7 +85,7 @@ Learning comes mainly from real projects. As the practices are used on live prod
 
 ## 6. Building the toolkit
 
-The sections above are about adopting agentic engineering. This section is about producing what teams adopt — the shared rules, checks, and skills that make the structured end of the continuum possible. It is for the taskforce and its contributors; the mechanics of installing, contributing, and distributing live in the repository's `README` and `CONTRIBUTING` guide.
+The sections above are about adopting agentic engineering. This section is about producing what teams adopt — the shared rules, checks, and skills that make the structured end of the continuum possible. These are the **capabilities** this document refers to; a *skill* is simply a capability packaged as an invocable workflow. It is for the taskforce and its contributors; the mechanics of installing, contributing, and distributing live in the repository's `README` and `CONTRIBUTING` guide.
 
 The toolkit is what makes the progression reachable in practice. Each capability packages a piece of structure — a guardrail, a review standard, a repeatable workflow — that a team would otherwise have to build for itself. By installing what the community has already proven, a team advances from ad-hoc delegation toward agentic workflows and structured agentic software engineering without reinventing the supporting structure each time. Every capability we add lowers the cost of moving up a checkpoint, which is how the progression in Section 2 turns from an aspiration into something teams can actually adopt.
 
