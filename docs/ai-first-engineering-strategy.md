@@ -49,8 +49,8 @@ The guardrails that make agentic work safe:
 
 - **Verification over trust.** A "done" claim stays unverified until there is evidence — the command was run, the output read, the tests pass.
 - **Review against written standards.** Changes are reviewed against agreed standards rather than skimmed, so the human's role is to adjudicate findings rather than be the first line of detection.
-- **Dependency cooldown.** New dependency versions are adopted only once they are a few days old (we use ≥ 7 days), so freshly-published malicious releases are caught before they reach a lockfile.
-- **Secrets and branch protection.** Staged changes are scanned for secrets, and direct pushes to the main branch are blocked, through git hooks in the repo.
+- **Dependency cooldown.** Don't adopt a dependency release the moment it's published — wait out a short cooldown so freshly-published malicious versions are caught before they enter the project (our default is ≥ 7 days).
+- **Secrets and branch protection.** Scan changes for secrets before they land, and block direct pushes to the main branch so work goes through review — enforced with automated checks (we use git hooks).
 - **Data sensitivity.** A project's data classification is known before code or data reaches an external model, and the work is matched to an eligible environment (for example, OPEN / OFFICIAL / OFFICIAL-CLOSED). For restricted projects, sensitive material stays on-device.
 
 The aim is straightforward: every increase in autonomy has a matching guardrail in the repo, so structure and trust grow together.
