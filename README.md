@@ -1,6 +1,11 @@
 # AI-First Taskforce
 
-Knowledge repository for the AI-First Taskforce. This repo collects best practices, templates, and lessons learned from trials where non-engineer practitioners build production software with Claude Code.
+The AI-First Taskforce's shared body of knowledge for building production software AI-first. It's captured in two complementary forms:
+
+- **Prose** — best practices, `CLAUDE.md` templates, trial artifacts, and the [AI-First Engineering Strategy](docs/ai-first-engineering-strategy.md).
+- **Skills** — the `aif-*` Claude Code skills under `skills/`: executable workflows *and* a form of documentation, each encoding a best practice precisely enough for an agent to carry it out.
+
+The skills are delivered as a `gh` CLI extension that installs them into your own Claude Code (`~/.claude/skills/`) — see [Installation](#installation).
 
 ---
 
@@ -21,7 +26,7 @@ gh ai-first-taskforce setup
 Skills are available to Claude Code automatically once installed. To get the latest skills after an extension update:
 
 ```sh
-gh extension upgrade ai-first-taskforce && gh ai-first-taskforce setup
+gh extension upgrade gh-ai-first-taskforce && gh ai-first-taskforce setup
 ```
 
 ---
@@ -29,6 +34,8 @@ gh extension upgrade ai-first-taskforce && gh ai-first-taskforce setup
 ## Goals
 
 The AI-First Taskforce aims to increase developer productivity through practical application of generative AI in software engineering workflows.
+
+See [**AI-First Engineering Strategy**](docs/ai-first-engineering-strategy.md) — how AI modernizes software engineering: the progression from ad-hoc AI use to structured agentic software engineering, and how teams adopt it safely.
 
 ### Ongoing projects
 
@@ -53,68 +60,45 @@ For projects that cannot be deployed to commercial or cloud LLM environments, ex
 
 ```
 gh-ai-first-taskforce/
+├── gh-ai-first-taskforce                Extension entry point — `gh ai-first-taskforce setup`
+├── lefthook.yml                         Lefthook config — pre-commit secret scan, pre-push main protection
+├── hooks/                               Git hook scripts wired up by Lefthook
+├── skills/                              Claude Code skills (aif-*) installed by the extension
+│   ├── README.md                        Catalogue of installed skills
+│   ├── aif-code-review/
+│   ├── aif-create-issue/
+│   ├── aif-git-hooks-setup/
+│   ├── aif-implement-issue/
+│   ├── aif-lint-setup/
+│   ├── aif-split-issue/
+│   └── aif-update-npm-dependencies/
+├── docs/
+│   └── ai-first-engineering-strategy.md  How AI modernizes engineering — the progression and toolkit
 ├── templates/
 │   ├── CLAUDE.md                        Generalized CLAUDE.md — copy to a new project before build week
 │   ├── trial-review.md                  Blank post-trial review template
 │   ├── trial-goals.md                   Goals and success criteria template — fill in before each trial
-│   └── skills/
-│       ├── SKILLS.md                    Agent-readable routing index — start here to find the right skill
-│       ├── by-stack/
-│       │   └── nextjs-ts-prisma/
-│       │       ├── pre-merge-audit/     Pre-merge checklist for Next.js + TypeScript + Prisma projects
-│       │       └── review-pr/           Full PR review workflow for Next.js + TypeScript + Prisma projects
-│       └── by-function/
-│           └── web-app-with-db/         Opinionated skill set for web apps with a database (uses nextjs-ts-prisma)
+│   └── skills/                          Legacy: copy-in stack/function review skills (superseded by aif-* skills)
 └── trials/
     └── sums/                            Artifacts from Trial 1: SuMS (Feb–Mar 2026)
         ├── CLAUDE.md                    SuMS project rules (the source for templates/CLAUDE.md)
         ├── trial-review.md              SuMS post-trial review with gaps log
         └── skills/                      SuMS-specific skills (source for templates/skills/by-stack/nextjs-ts-prisma/)
-            ├── pre-merge-audit/
-            ├── review-pr/
-            └── run-local/
 ```
 
 ---
 
 ## Skills
 
-`templates/skills/` contains Claude Code skills for automated code review. Skills are organized in two ways — by stack (for experienced developers who know their tech) and by function (for non-coders who know what their app does).
+The taskforce ships Claude Code skills as a `gh` extension. Install them with `gh ai-first-taskforce setup` (see [Installation](#installation)) — they land in `~/.claude/skills/` and Claude Code picks them up automatically. Each skill is self-describing: its `SKILL.md` declares when to trigger, so there is no router to maintain.
 
-### Finding the right skill
+See [`skills/README.md`](skills/README.md) for the catalogue of installed skills — the single source of truth, kept in sync as skills are added or removed.
 
-The easiest way is to ask your agent to read `templates/skills/SKILLS.md`. It will inspect your project, detect the stack from observable signals, and load the matching skill automatically.
+For the strategy behind these skills — how teams adopt them, and how the toolkit itself is built — see [AI-First Engineering Strategy](docs/ai-first-engineering-strategy.md).
 
-If you know your stack, go directly to `templates/skills/by-stack/<your-stack>/`.
+### Legacy: copy-in stack templates
 
-### Installing skills in a project
-
-Copy the matched skill directory into your project's `.claude/skills/` folder:
-
-```bash
-mkdir -p .claude/skills
-cp -r path/to/gh-ai-first-taskforce/templates/skills/by-stack/nextjs-ts-prisma/pre-merge-audit .claude/skills/
-cp -r path/to/gh-ai-first-taskforce/templates/skills/by-stack/nextjs-ts-prisma/review-pr .claude/skills/
-```
-
-Commit `.claude/skills/` to the project repo so skills are available to everyone.
-
-> **One-time setup:** `review-pr/SKILL.md` Phase 5 references `[ path/to/trial-review.md ]`. Update this to wherever your project keeps its trial review document before using the skill.
-
-### Available skills
-
-| Skill | What it does |
-|---|---|
-| `pre-merge-audit` | Focused pass/fail audit before opening a PR. Checks husky hooks, secrets, code organisation, Prisma, raw SQL, infrastructure, and env var coverage. Output: a pass/fail table. Any FAIL on a Critical or High item blocks merge. |
-| `review-pr` | Full PR review workflow. Rebases onto main, resolves conflicts, scans for violations, runs build and tests, documents new gap patterns, then fixes each item in a separate commit. Use as the SWE's merge-readiness pass. |
-
-### Available stacks
-
-| Stack | Path |
-|---|---|
-| Next.js · TypeScript · Prisma · PostgreSQL | `templates/skills/by-stack/nextjs-ts-prisma/` |
-
-More stacks will be added as trials are completed. To contribute a new stack skill, follow the structure in `by-stack/nextjs-ts-prisma/` and open a PR.
+Before the `gh` extension, review skills were distributed as copy-in templates under `templates/skills/`, organized by stack and by function with a `SKILLS.md` routing index (`pre-merge-audit` and `review-pr` for Next.js · TypeScript · Prisma). These are **superseded by the `aif-*` skills above** and kept for reference. To use one, copy its directory into a project's `.claude/skills/` and commit it.
 
 ---
 
@@ -125,15 +109,15 @@ More stacks will be added as trials are completed. To contribute a new stack ski
 1. Fill out `templates/trial-goals.md` with the project context, what you want to learn, and success criteria. Sign off with the PM, SWE, and DevOps before the build starts.
 2. Copy `templates/CLAUDE.md` to the new project repo as `CLAUDE.md`. Edit all `[ ]` placeholders for the project's stack, hosting, and environments.
 3. Work through the **New Project Init Checklist** inside that `CLAUDE.md` before any application code is written.
-4. Install the skills (see above) so `/skills` and `/review-pr` are available from day one.
+4. Install the taskforce skills with `gh ai-first-taskforce setup` so the `aif-*` skills are available from day one.
 
 **During the trial:**
 
-5. SWE reviews Claude's commits on an agreed cadence (daily async is the baseline). Running `/skills` at the end of each session is a lightweight way to surface violations before they accumulate. Log gaps as they emerge — don't wait for the end.
+5. SWE reviews Claude's commits on an agreed cadence (daily async is the baseline). Running `aif-code-review` at the end of each session is a lightweight way to surface violations before they accumulate. Log gaps as they emerge — don't wait for the end.
 
 **Before merging any PR:**
 
-6. SWE runs `/review-pr` on the PR branch. The skill rebases, scans, builds, and fixes violations — each fix committed separately. Only merge when `/review-pr` exits with no FAIL items.
+6. SWE runs `aif-code-review` on the PR branch to scan for violations and capture findings before merge. Only merge once the findings are resolved.
 
 **After the trial:**
 
@@ -142,27 +126,7 @@ More stacks will be added as trials are completed. To contribute a new stack ski
 
 ---
 
-## Contributing
-
-### Setting up git hooks
-
-This repo uses [Lefthook](https://github.com/evilmartians/lefthook) to manage git hooks. Run once after cloning:
-
-```sh
-brew install lefthook gitleaks
-lefthook install
-```
-
-This activates:
-- **pre-commit** — scans staged changes for secrets via gitleaks
-- **pre-push** — blocks direct pushes to `main`; open a pull request instead
-
-### Guidelines
-
-- Completed trials go in `trials/<project-name>/`.
-- When a gap pattern appears in more than one trial, extract it into `templates/CLAUDE.md` as a rule.
-- Keep templates generalized — strip project-specific names, commit hashes, and org-specific tooling before committing to `templates/`.
-- Dates in this repo use ISO format (YYYY-MM-DD).
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full guide — ways to contribute, the issue-first workflow, local setup (installing the git hooks), branching and Conventional Commits, how to add a skill and the quality bar, and the PR flow.
 
 ---
 

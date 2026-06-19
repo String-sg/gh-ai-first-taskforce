@@ -1,8 +1,0 @@
-#!/bin/sh
-echo "mock-pnpm $*" >> "${MOCK_LOG:-/tmp/mock-calls.log}"
-if [ "$1" = "exec" ] && [ "$2" = "husky" ] && [ "$3" = "init" ]; then
-  mkdir -p "$(pwd)/.husky"
-  printf '#!/bin/sh\nnpm test\n' > "$(pwd)/.husky/pre-commit"
-  chmod +x "$(pwd)/.husky/pre-commit"
-fi
-exit 0

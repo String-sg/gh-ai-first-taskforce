@@ -1,7 +1,0 @@
-#!/bin/sh
-echo "## AI Review
-
-This is a canned test review.
-
-- Line 1 looks good
-- Line 2 could be improved"

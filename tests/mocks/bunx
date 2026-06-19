@@ -1,8 +1,0 @@
-#!/bin/sh
-echo "mock-bunx $*" >> "${MOCK_LOG:-/tmp/mock-calls.log}"
-if [ "$1" = "husky" ] && [ "$2" = "init" ]; then
-  mkdir -p "$(pwd)/.husky"
-  printf '#!/bin/sh\nnpm test\n' > "$(pwd)/.husky/pre-commit"
-  chmod +x "$(pwd)/.husky/pre-commit"
-fi
-exit 0
