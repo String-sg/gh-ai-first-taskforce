@@ -94,8 +94,32 @@ Every comment posted by this skill ends with the following footer so that skill 
    - If found: verify any library referenced in the suggestion is available in the installed version; revise or note a required upgrade if not
    - If none found: note no manifest detected and mentally trace any shell commands against the failure modes described
 9. Drop all REFUTED findings — see Rules › Refuted findings
-10. Deduplicate against existing comments — using the **all open threads** set from step 3, check each remaining finding against every open thread. If any thread's comment already addresses the same issue at the same `path` and `originalLine`, or raises the same concern in substance (regardless of who posted it), skip posting to avoid repeating feedback already given.
-11. Resolve addressed conversations — for each open skill thread, check whether the current diff has addressed the issue it describes. If yes, resolve the thread:
+10. **Agent pattern classification** — for each remaining CONFIRMED or PLAUSIBLE finding, evaluate whether it matches any AI/agent characteristic below. Tag matching findings `[AI-PATTERN]`.
+
+    If any `[AI-PATTERN]` findings exist, update `review/agent-patterns.md`:
+    - If the file does not exist, create it with the Agent Pattern Registry header and table (see Agent Pattern Registry section below).
+    - For each tagged finding: check the Pattern name column for an existing match (case-insensitive substring). If matched, increment `Confirmed by` and append `(also seen: <file>)` to the Concrete example. If not matched, append a new row: next sequential `AP-NNN` ID, directive Pattern name, one-sentence Prevention instruction, one project-anchored Concrete example, today's ISO date, severity, `1 review`.
+    - Commit the file: `docs(review): update agent-patterns.md [skip ci]`
+
+    For any pattern whose `Confirmed by` count has just reached 3, evaluate it against the programmability criteria (Specificity, Repeatability, Speed, Tool availability, Semantic dependency — see Agent Pattern Registry section). If it passes:
+    - Implement the guard using `aif-lint-setup` (lint rule) or `aif-git-hooks-setup` (hook script) as appropriate.
+    - Remove the pattern's row from `review/agent-patterns.md`.
+    - Prepend a promotion comment above the table: `<!-- AP-NNN "<Pattern name>" promoted to <tool> (<tier>) on <date> -->`
+    - If the guard requires CI pipeline changes, surface a recommendation to the developer instead of implementing directly.
+
+    **AI/agent pattern criteria** — tag `[AI-PATTERN]` when a finding matches one or more:
+    - **Search Before Implementing Utilities** (Reuse): logic re-implemented that already exists in a shared or utils module. Prevention: "Grep `lib/` and `utils/` before writing a new transform, parse, or validate function."
+    - **Parameterise Instead of Copy-Pasting** (Simplification): two or more nearly-identical blocks with only minor differences. Prevention: "Extract a shared function with parameters for the variation; never duplicate a block of more than 5 lines with only minor changes."
+    - **Document Before Deleting Tests or Guards** (Removed behavior): test or guard deleted with no reason in the commit message or PR description. Prevention: "If deleting a test or guard, state the reason in the commit message subject line."
+    - **Update All Callers on Signature Change** (Cross-file): function signature changed without updating every call site. Prevention: "After changing a function signature, grep for all call sites and update each before committing."
+    - **Fix Inside the Function Not at the Call Site** (Altitude): post-processing a shared function's result at the call site to fix a problem that belongs inside the function. Prevention: "If correcting output at the call site, ask whether the fix belongs inside the shared function instead."
+    - **Use Installed API Version** (Line-by-line): library function, method, or option used that does not exist in the installed version. Prevention: "Check the installed version in the manifest before using an API; compile or type-check before committing."
+    - **Use Domain-Specific Variable Names** (Line-by-line): production code using `data`, `result`, `response`, `temp`, `item` where the surrounding codebase uses domain-specific names. Prevention: "Name variables after the domain concept they hold, not their data type or role in the computation."
+    - **Log or Re-throw in Every Catch** (Line-by-line): catch block or error branch with no re-throw, no log, and no observable side-effect. Prevention: "Every catch block must re-throw, log, or produce a visible side-effect — never leave it silent."
+    - **Justify Every New Abstraction Layer** (Altitude): interface, wrapper, or abstraction layer introduced with a single implementation and no articulated reason. Prevention: "Before adding an abstraction layer, state in the commit message why the indirection is justified."
+
+11. Deduplicate against existing comments — using the **all open threads** set from step 3, check each remaining finding against every open thread. If any thread's comment already addresses the same issue at the same `path` and `originalLine`, or raises the same concern in substance (regardless of who posted it), skip posting to avoid repeating feedback already given.
+12. Resolve addressed conversations — for each open skill thread, check whether the current diff has addressed the issue it describes. If yes, resolve the thread:
     ```bash
     gh api graphql -f query='
     mutation($threadId: ID!) {
@@ -104,9 +128,9 @@ Every comment posted by this skill ends with the following footer so that skill 
       }
     }' -f threadId="{thread_id}"
     ```
-12. Post each remaining new finding as an inline PR comment — see Inline Comment Format.
-13. Determine outcome and print summary:
-    - **No new findings and no open skill threads remaining** (all were resolved in step 11): post the following as a PR comment, then print `Review complete — LGTM posted to PR #{number}.`
+13. Post each remaining new finding as an inline PR comment — see Inline Comment Format.
+14. Determine outcome and print summary:
+    - **No new findings and no open skill threads remaining** (all were resolved in step 12): post the following as a PR comment, then print `Review complete — LGTM posted to PR #{number}.`
       ```
       LGTM 👍
 
@@ -160,18 +184,42 @@ Run the review, triage each finding interactively with the user, then optionally
    - If found: check the installed version of any library referenced in the suggestion; if the suggestion uses an API or option not available in that version, revise it to match or note the required upgrade explicitly
    - If none found: note that no manifest was detected, skip version validation, and ensure any shell commands are mentally traced against the failure modes described in the finding
 7. Drop all REFUTED findings — see Rules › Refuted findings
-8. Triage each finding with the user — if no findings remain after step 7, skip to step 9. Otherwise present findings one at a time in severity order (Critical → High → Medium → Low). For each, show the full finding details (file, line, code excerpt, problem, suggestion) and ask:
+8. **Agent pattern classification** — for each remaining CONFIRMED or PLAUSIBLE finding, evaluate whether it matches any AI/agent characteristic below. Tag matching findings `[AI-PATTERN]`.
+
+    If any `[AI-PATTERN]` findings exist, update `review/agent-patterns.md`:
+    - If the file does not exist, create it with the Agent Pattern Registry header and table (see Agent Pattern Registry section below).
+    - For each tagged finding: check the Pattern name column for an existing match (case-insensitive substring). If matched, increment `Confirmed by` and append `(also seen: <file>)` to the Concrete example. If not matched, append a new row: next sequential `AP-NNN` ID, directive Pattern name, one-sentence Prevention instruction, one project-anchored Concrete example, today's ISO date, severity, `1 review`.
+    - Commit the file: `docs(review): update agent-patterns.md [skip ci]`
+
+    For any pattern whose `Confirmed by` count has just reached 3, evaluate it against the programmability criteria (Specificity, Repeatability, Speed, Tool availability, Semantic dependency — see Agent Pattern Registry section). If it passes:
+    - Implement the guard using `aif-lint-setup` (lint rule) or `aif-git-hooks-setup` (hook script) as appropriate.
+    - Remove the pattern's row from `review/agent-patterns.md`.
+    - Prepend a promotion comment above the table: `<!-- AP-NNN "<Pattern name>" promoted to <tool> (<tier>) on <date> -->`
+    - If the guard requires CI pipeline changes, surface a recommendation to the developer instead of implementing directly.
+
+    **AI/agent pattern criteria** — tag `[AI-PATTERN]` when a finding matches one or more:
+    - **Search Before Implementing Utilities** (Reuse): logic re-implemented that already exists in a shared or utils module. Prevention: "Grep `lib/` and `utils/` before writing a new transform, parse, or validate function."
+    - **Parameterise Instead of Copy-Pasting** (Simplification): two or more nearly-identical blocks with only minor differences. Prevention: "Extract a shared function with parameters for the variation; never duplicate a block of more than 5 lines with only minor changes."
+    - **Document Before Deleting Tests or Guards** (Removed behavior): test or guard deleted with no reason in the commit message or PR description. Prevention: "If deleting a test or guard, state the reason in the commit message subject line."
+    - **Update All Callers on Signature Change** (Cross-file): function signature changed without updating every call site. Prevention: "After changing a function signature, grep for all call sites and update each before committing."
+    - **Fix Inside the Function Not at the Call Site** (Altitude): post-processing a shared function's result at the call site to fix a problem that belongs inside the function. Prevention: "If correcting output at the call site, ask whether the fix belongs inside the shared function instead."
+    - **Use Installed API Version** (Line-by-line): library function, method, or option used that does not exist in the installed version. Prevention: "Check the installed version in the manifest before using an API; compile or type-check before committing."
+    - **Use Domain-Specific Variable Names** (Line-by-line): production code using `data`, `result`, `response`, `temp`, `item` where the surrounding codebase uses domain-specific names. Prevention: "Name variables after the domain concept they hold, not their data type or role in the computation."
+    - **Log or Re-throw in Every Catch** (Line-by-line): catch block or error branch with no re-throw, no log, and no observable side-effect. Prevention: "Every catch block must re-throw, log, or produce a visible side-effect — never leave it silent."
+    - **Justify Every New Abstraction Layer** (Altitude): interface, wrapper, or abstraction layer introduced with a single implementation and no articulated reason. Prevention: "Before adding an abstraction layer, state in the commit message why the indirection is justified."
+
+9. Triage each finding with the user — if no findings remain after step 8, skip to step 10. Otherwise present findings one at a time in severity order (Critical → High → Medium → Low). For each, show the full finding details (file, line, code excerpt, problem, suggestion) and ask:
 
    > "Fix now or later?"
 
    Record the user's answer against each finding. If the user wants to fix it now, assist with the fix before moving to the next finding — mark it **Fixed** once done. If later, mark it **To be fixed**.
 
-9. Print the full review summary:
-   - Severity counts table (Critical / High / Medium / Low)
-   - All findings grouped by triage: **Fixed** first, then **To be fixed** — each with severity, file, line, and one-line summary
-   - What Looks Good (2–4 specific strengths)
+10. Print the full review summary:
+    - Severity counts table (Critical / High / Medium / Low)
+    - All findings grouped by triage: **Fixed** first, then **To be fixed** — each with severity, file, line, and one-line summary
+    - What Looks Good (2–4 specific strengths)
 
-10. Ask: "Would you like to generate a written report?"
+11. Ask: "Would you like to generate a written report?"
     - **Yes** → write the report to `review/<safe-branch>/report-<YYYYMMDDHHMMSS>.md` (create the directory if needed: `mkdir -p review/<safe-branch>`). The report follows the Report Template; include each finding's triage status alongside its entry. Print: `Report saved: review/<safe-branch>/<filename>.md`
     - **No** → done.
 
@@ -347,6 +395,62 @@ Each finding follows this structure, grouped under `### Critical`, `### High`, `
 
 - 2–4 specific strengths — name the design decision, not just "good code"
 ```
+
+---
+
+## Agent Pattern Registry
+
+Used by step 10 (PR path) and step 8 (Local Branch path) to persist and promote AI-characteristic findings.
+
+### File schema
+
+```markdown
+# Agent Pattern Registry
+
+> Auto-maintained by `aif-code-review`. Read by `aif-implement-issue` as an anti-pattern list.
+> Deduplication key: Pattern name (case-insensitive). Increment "Confirmed by" on recurrence.
+> When a pattern is promoted to a programmatic guard, remove its row and note the guard location in a comment above the table.
+
+| ID | Angle | Pattern name | Prevention | Concrete example | First seen | Severity | Confirmed by |
+|----|-------|-------------|-----------|-----------------|------------|----------|-------------|
+```
+
+- **ID**: sequential `AP-NNN`, never reused
+- **Angle**: one of the 7 review angle names (e.g. Reuse, Altitude)
+- **Pattern name**: directive form, 3–6 words, title-cased — the deduplication key (e.g. "Search Before Implementing Utilities")
+- **Prevention**: one sentence, imperative voice, stating what to do instead
+- **Concrete example**: one sentence anchored to this project with a file path or function name
+- **First seen**: ISO date
+- **Severity**: Critical / High / Medium / Low
+- **Confirmed by**: `N review(s)` — starts at 1, incremented when the same Pattern name recurs
+
+### Programmability evaluation (triggered at `Confirmed by: 3`)
+
+Assess all five criteria:
+
+| Criterion | Question | Disqualifier |
+|-----------|----------|--------------|
+| **Specificity** | Can this be expressed as an AST rule, regex, or grep without matching valid code? | High false-positive rate |
+| **Repeatability** | Does the check produce the same result every run on the same code? | Non-deterministic |
+| **Speed** | ≤5 s → pre-commit; ≤30 s → pre-push; slower → CI only | Must fit one tier |
+| **Tool availability** | Does an existing linter rule, hook, or binary implement this? | Prefer existing over custom |
+| **Semantic dependency** | Does detecting it require understanding code *intent*, not just *structure*? | If yes → not programmable |
+
+A pattern is promotable when: Specificity OK, Repeatability YES, Semantic dependency NO, and Speed fits a tier.
+
+**Known programmability of the 9 built-in criteria:**
+
+| Pattern | Promotable | Tier | Tool |
+|---------|-----------|------|------|
+| Log or Re-throw in Every Catch | Yes | Pre-commit | ESLint `no-empty` / `@typescript-eslint/no-empty-function`; Go `errcheck` |
+| Parameterise Instead of Copy-Pasting | Partial | Pre-push | `jscpd` with minimum-token threshold |
+| Update All Callers on Signature Change | Yes (typed langs) | Pre-commit | `tsc --noEmit`; Go compiler |
+| Document Before Deleting Tests or Guards | Partial | Pre-push | `git diff` detecting net deletion of `*.test.*` / `*_test.go` files |
+| Use Installed API Version | Yes | Pre-commit | `tsc --noEmit`; `go build` (caught by compiler) |
+| Use Domain-Specific Variable Names | Partial | Pre-commit | Grep/semgrep — use only if false-positive rate is acceptable |
+| Search Before Implementing Utilities | No | — | Requires semantic similarity judgment |
+| Fix Inside the Function Not at the Call Site | No | — | Requires understanding layer boundaries |
+| Justify Every New Abstraction Layer | No | — | Requires understanding intent |
 
 ---
 

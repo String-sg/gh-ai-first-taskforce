@@ -28,6 +28,19 @@ If any item is unchecked, stop. Report which items are unchecked and tell the de
 
 ## Step 3: Explore the codebase
 
+Before reading implementation files, check whether this project has accumulated agent-pattern history:
+
+```bash
+ls review/agent-patterns.md
+```
+
+If the file exists, read its full contents. Treat every row's **Prevention** column as a binding constraint for this session:
+- **High `Confirmed by` counts** (3+ reviews): these are recurrent patterns; apply extra scrutiny before any commit that touches the same Angle.
+- Before each commit, verify that none of the listed patterns appear in the staged diff.
+- If the correct implementation naturally resembles a listed pattern, note the distinction explicitly in the commit message.
+
+If the file does not exist, proceed normally.
+
 Before writing any code, read the files named in the technical context sections. Understand:
 
 - The existing patterns you are expected to follow (read the referenced files)
