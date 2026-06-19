@@ -8,67 +8,13 @@ You are helping create a well-structured GitHub issue for the teacher-workspace 
 The issue has two parts separated by a `---` divider:
 
 - **Author sections** (written now): user story, background, acceptance criteria, out of scope, design assets
-- **Implementer sections** (filled during engineering grooming): technical context, implementation details, additional test scenarios, hard constraints
+- **Implementer sections** (filled during engineering grooming): technical context, data model, API contract, error contract, additional test scenarios, hard constraints
 
 Dependencies live outside the body: link blockers and dependents with GitHub's native issue relationships (the "Relationships" panel: blocked by / blocks), so the links stay accurate as issues move and close.
 
 ## Issue template
 
-This is the canonical structure. Fill every section. Until grooming, leave each implementer section as its placeholder `_Pending grooming._` (do not delete the heading).
-
-```markdown
-## User story
-
-As a [role], I want [capability], so that [benefit].
-
-## Background
-
-<problem this solves, how often it affects users, links to specs / Slack threads / recordings>
-
-## Acceptance criteria
-
-### <Outcome-first scenario name (happy path)>
-
-- **Given** <starting state>
-- **When** <action>
-- **Then** <observable outcome>
-
-### <Outcome-first scenario name (error / edge case)>
-
-- **Given** <starting state>
-- **When** <action>
-- **Then** <observable outcome>
-
-## Out of scope
-
-- <explicit exclusion>
-
-## Design assets
-
-<Figma links, screenshots, a Mermaid diagram, or N/A>
-
----
-
-## Technical context
-
-_Pending grooming._
-
-## Implementation details
-
-_Pending grooming._
-
-## Additional test scenarios
-
-_Pending grooming._
-
-## Hard constraints
-
-_Pending grooming._
-
----
-
-*🤖 Generated with aif-create-issue*
-```
+The canonical structure is in `issue-template.md` in this skill's directory (`~/.claude/skills/aif-create-issue/issue-template.md`). Read that file when constructing or previewing an issue body. Fill every section. Until grooming, leave each implementer section as its placeholder `_Pending grooming._` (do not delete the heading).
 
 ## Workflow
 
@@ -95,71 +41,56 @@ If any signal is present, pause and surface it:
 
 > "These scenarios describe two separate capabilities: [A] and [B]. Creating one issue would make it too large for a coding agent to implement safely in a single PR. Would you like to create two linked issues instead?"
 
-If the user confirms a split: complete the author sections for each capability separately and create them as two issues. Run Steps 2 through 5 once per issue, then link them with GitHub's blocked-by / blocks relationship if one depends on the other.
+If the user confirms a split: complete the author sections for each capability separately and create them as two issues. Run Steps 2 and 3 once per issue, then link them with GitHub's blocked-by / blocks relationship if one depends on the other.
 
 If the user wants to keep it as one issue: note it explicitly in the out of scope section and continue.
 
 ### Step 1c: Identify dependencies from the backlog
 
-After the split evaluation, fetch open issues and surface any that are likely blockers or dependents. These are linked as GitHub relationships after the issue is created (Step 5), not written into the body.
-
-Run:
+After the split evaluation, attempt to fetch open issues to surface likely blockers or dependents. These are linked as GitHub relationships after the issue is created (Step 3), not written into the body.
 
 ```sh
 gh issue list --state open --json number,title,body --limit 100
 ```
 
-Read the titles and bodies. Compare each against the new issue's scope, user story, and acceptance criteria. Flag an issue as a likely **blocker** if it must be completed before this capability can work correctly (for example, an auth issue that this feature depends on, or a data model change this feature builds on). Flag an issue as a likely **dependent** if this new issue would unblock or enable it.
+- **If the command succeeds**: read the titles and bodies. Compare each against the new issue's scope, user story, and acceptance criteria. For any issue whose title or body looks potentially related, fetch its comments for additional context, as blocking relationships and dependencies are often mentioned in discussion rather than the issue body:
 
-Present findings before asking the author anything:
+  ```
+  gh issue view <number> --json comments --jq '.comments[].body'
+  ```
 
-> "I found these potentially related open issues:
->
-> Possible blockers (this issue may depend on them):
->
-> - #NNN: title
->
-> Possible dependents (they may depend on this issue):
->
-> - #NNN: title
->
-> Are any of these actual dependencies, or are they unrelated?"
+  Flag an issue as a likely **blocker** if it must be completed before this capability can work correctly (for example, an auth issue that this feature depends on, or a data model change this feature builds on). Flag an issue as a likely **dependent** if this new issue would unblock or enable it. Present findings before asking the author anything:
 
-Let the author confirm or dismiss each suggestion. Keep the confirmed ones to link as relationships in Step 5. If no related issues are found, proceed without prompting: do not ask the author to confirm a null result.
+  > "I found these potentially related open issues:
+  >
+  > Possible blockers (this issue may depend on them):
+  >
+  > - #NNN: title
+  >
+  > Possible dependents (they may depend on this issue):
+  >
+  > - #NNN: title
+  >
+  > Are any of these actual dependencies, or are they unrelated?"
 
-### Step 2: Ask about grooming state
+  Let the author confirm or dismiss each suggestion. Use the confirmed ones to link as GitHub relationships in Step 3. If no related issues are found, proceed without prompting: do not ask the author to confirm a null result.
+
+- **If the command fails with "command not found" or "'gh' is not recognized"**: skip the automated scan. Ask the author to identify any blocking or dependent issues manually, or confirm "none".
+- **If the command fails for any other reason**: surface the real error and stop.
 
 Ask: "Are the technical sections already known, or will engineers fill those in during grooming?"
 
-- If **already known**, gather the implementer sections now (see step 3).
-- If **grooming pending**, skip step 3 and leave the implementer sections as their `_Pending grooming._` placeholders.
+Note the answer: it determines what happens after the issue is created (see step 3).
 
-### Step 3: Gather implementer sections (if known)
+### Step 2: Preview and confirm
 
-1. **Technical context**: relevant directory paths.
-2. **Implementation details**: a single section whose mini-sections you derive from this specific task. Do not start from the list below, and do not reproduce it as a default set.
-   - First, write down every decision an implementer would otherwise have to guess to build *this* task: what to name things, where code lives, data shapes, contracts, edge/error handling, concurrency, migrations, config, ordering, idempotency, and so on. Each distinct decision becomes one mini-section.
-   - Name each mini-section after its actual subject when a generic label would lose detail (e.g. "Assignment dedup key" or "Roster sync ordering", not just "Data model"). Most issues need at least one mini-section that is not in the reference list below.
-   - Only after deriving the task's mini-sections, skim the reference list to catch a category you missed. Include an item from it only if it applies; skip the rest.
-     - **Package/file placement**: where new files go and what they are named. Agents guess from naming conventions if omitted.
-     - **Patterns to follow**: existing files that use the same pattern. Name a specific file path. Agents replicate the referenced pattern.
-     - **Data model**: new or modified structs/types with field names, types, and constraints. Agents invent field names if omitted.
-     - **API contract**: method, path, full request and response shapes. Include when building or changing an endpoint. Agents invent shapes if omitted.
-     - **Error contract**: for each error case, the HTTP status and response body. Pairs with the API contract. Agents make inconsistent choices if omitted.
-3. **Additional test scenarios**: non-user-observable scenarios worth testing (concurrent writes, boundary values, internal error paths). Use the same Given-When-Then format.
-4. **Hard constraints**: things the implementer must NOT do (e.g. "do not add a new Go dependency").
+Render the complete issue body in a markdown code block and ask for confirmation before creating the issue. Leave implementer sections with their placeholder text regardless of whether technical details are known; those will be filled in after creation.
 
-Before continuing, check that the Implementation details mini-sections were derived from this task (at least one should be task-specific, not just reference-list categories) and that any patterns-to-follow mini-section names a specific file path. If a decision an implementer would have to guess is still uncovered, ask the user for it.
+### Step 3: Create the issue
 
-### Step 4: Preview and confirm
+The title must follow the commit convention from CLAUDE.md: `<type>(<scope>): <short description>` using backticks around the scope.
 
-Assemble the title from the type and scope gathered in Step 1 plus a short description of the change: `<type>(<scope>): <short description>`. This title becomes the squash-merge commit message, so it must be a valid commit message.
-
-Render the title and the complete issue body in a markdown code block and ask for confirmation before creating the issue.
-
-### Step 5: Create the issue
-
-The body is markdown containing backticks and other shell-special characters, so pass it via a file rather than inline (an inline `--body "..."` would let the shell interpret backticks as command substitution). Write the confirmed body to a temp file and create the issue with `--body-file`:
+The body is markdown containing backticks and other shell-special characters, so pass it via a file rather than inline (an inline `--body "..."` would let the shell interpret backticks as command substitution). Write the confirmed body to a temp file and create the issue with `--body-file`.
 
 Ensure the usage-tracking label exists (idempotent — `gh label create` exits non-zero if it already exists, which `|| true` swallows), then create the issue with it:
 
@@ -171,22 +102,22 @@ gh issue create --title "<title>" --body-file /tmp/issue-body.md --label "skill:
 
 The label makes usage queryable with `gh issue list --label "skill:aif-create-issue"` (exact, unlike free-text search), and the `*🤖 Generated with aif-create-issue*` footer in the body template gives human-readable attribution.
 
-After creation, print the issue URL.
+- **If the command succeeds**: print the issue URL. Then link any dependencies confirmed in Step 1b/1c as GitHub relationships using the GraphQL `addBlockedBy` mutation. Resolve each issue number to its node ID first, then call the mutation:
 
-Then link any dependencies confirmed in Step 1b/1c using GitHub's native issue relationships. `gh issue` has no relationship subcommand, but the GraphQL `addBlockedBy` mutation does it. It takes node IDs, so first resolve each issue number to its node ID, then call the mutation. "Blocked by" is set on the new issue; "Blocks" is the inverse, set on the dependent issue.
+  ```sh
+  # Resolve an issue number to its node ID
+  gh issue view <number> --json id --jq .id
 
-```sh
-# Resolve an issue number to its node ID
-gh issue view <number> --json id --jq .id
+  # This issue is BLOCKED BY #NNN
+  gh api graphql -f query='mutation($issue:ID!,$blocker:ID!){addBlockedBy(input:{issueId:$issue,blockingIssueId:$blocker}){clientMutationId}}' -f issue=<this-issue-id> -f blocker=<blocker-id>
 
-# This issue is BLOCKED BY #NNN
-gh api graphql -f query='mutation($issue:ID!,$blocker:ID!){addBlockedBy(input:{issueId:$issue,blockingIssueId:$blocker}){clientMutationId}}' -f issue=<this-issue-id> -f blocker=<blocker-id>
+  # This issue BLOCKS #NNN (set the relationship on the dependent)
+  gh api graphql -f query='mutation($issue:ID!,$blocker:ID!){addBlockedBy(input:{issueId:$issue,blockingIssueId:$blocker}){clientMutationId}}' -f issue=<dependent-id> -f blocker=<this-issue-id>
+  ```
 
-# This issue BLOCKS #NNN (set the relationship on the dependent)
-gh api graphql -f query='mutation($issue:ID!,$blocker:ID!){addBlockedBy(input:{issueId:$issue,blockingIssueId:$blocker}){clientMutationId}}' -f issue=<dependent-id> -f blocker=<this-issue-id>
-```
-
-If no dependencies were confirmed, skip this.
+  If no dependencies were confirmed, skip this. If the user indicated that technical sections are already known, immediately invoke the `aif-groom-issue` skill on the newly created issue number to fill in the implementer sections now.
+- **If the command fails with "command not found" or "'gh' is not recognized"**: render the issue title and body as markdown and instruct the user to create the issue manually via the GitHub web interface.
+- **If the command fails for any other reason**: surface the real error and stop.
 
 ## Rules
 

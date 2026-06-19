@@ -5,11 +5,14 @@ description: Use when you need to decompose a GitHub issue numbered $ARGUMENTS i
 
 ## Step 1: Fetch and read the issue
 
-Run:
+Attempt:
 
 ```
 gh issue view $ARGUMENTS --json number,title,body,labels,state
 ```
+
+- **If the command fails with "command not found" or "'gh' is not recognized"**: ask the user to paste the issue body directly. Note that steps 3 and 4 will also need to be completed manually — ask the user to confirm they are prepared to create issues and close the original via the GitHub web interface before continuing.
+- **If the command fails for any other reason**: surface the real error and stop.
 
 Read the entire issue body. Extract:
 
@@ -66,7 +69,7 @@ Ensure the usage-tracking label exists once (idempotent — `|| true` swallows t
 gh label create "skill:aif-split-issue" --color ededed --description "Created with the aif-split-issue skill" 2>/dev/null || true
 ```
 
-Run for each child, applying the label:
+For each child, attempt (applying the label):
 
 ```
 gh issue create \
@@ -85,11 +88,15 @@ Append the following visible footer at the very end of each child issue body bef
 
 The label makes usage queryable with `gh issue list --label "skill:aif-split-issue"`; the footer gives human-readable attribution.
 
-Record each created issue number.
+- **If the command succeeds**: record the created issue number and continue.
+- **If the command fails with "command not found" or "'gh' is not recognized"**: render each child issue title and body as markdown for manual creation via the GitHub web interface. Ask the user to report the created issue numbers before proceeding to Step 4.
+- **If the command fails for any other reason**: surface the real error and stop.
 
 ## Step 4: Update the original issue
 
-Add a comment to the original issue listing the child issues and close it:
+Add a comment to the original issue listing the child issues and close it.
+
+Attempt:
 
 ```
 gh issue comment $ARGUMENTS --body "Split into:
@@ -99,11 +106,14 @@ gh issue comment $ARGUMENTS --body "Split into:
 These child issues need grooming before implementation begins."
 ```
 
-Then close the original:
+Then attempt:
 
 ```
 gh issue close $ARGUMENTS --reason "not planned"
 ```
+
+- **If either command fails with "command not found" or "'gh' is not recognized"**: render the comment body as markdown for the user to add manually, and instruct the user to close the original issue via the GitHub web interface.
+- **If either command fails for any other reason**: surface the real error and stop.
 
 ## Step 5: Report to the developer
 

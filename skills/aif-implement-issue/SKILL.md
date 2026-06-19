@@ -7,14 +7,17 @@ description: Use when you need to Implement a GitHub issue in this repository. T
 
 Determine the input type:
 
-- **Issue number** (e.g. `42`): run `gh issue view $ARGUMENTS --json number,title,body,labels,state` and read the returned body.
+- **Issue number** (e.g. `42`): attempt `gh issue view $ARGUMENTS --json number,title,body,labels,state,comments` and read the returned data.
+  - If the command fails with "command not found" or "'gh' is not recognized": ask the user to paste the issue body directly. Treat it as a pasted markdown body — omit the `Closes #NNN` line from the draft PR.
+  - If the command fails for any other reason: surface the real error and stop.
 - **Markdown body** (pasted directly): use the pasted content as the issue body. There is no issue number — omit the `Closes #NNN` line from the draft PR.
 
-In both cases, identify from the body:
+In both cases, identify from the body and comments:
 
 - The user story and acceptance criteria (author section)
 - The grooming checklist state (checkboxes before the IMPLEMENTER divider)
 - All implementer sections: technical context, data model, API contract, error contract, additional test scenarios, hard constraints
+- Any clarifications, decisions, or additional constraints added in comments after grooming — these take precedence over the issue body if they conflict
 
 ## Step 2: Validate the grooming checklist
 
@@ -160,6 +163,10 @@ Closes #$ARGUMENTS
 EOF
 )"
 ```
+
+- **If the command succeeds**: proceed to Step 10.
+- **If the command fails with "command not found" or "'gh' is not recognized"**: render the PR title and body as markdown and instruct the user to create the draft PR manually via the GitHub web interface.
+- **If the command fails for any other reason**: surface the real error and stop.
 
 ## Step 10: Report to the developer
 

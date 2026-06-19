@@ -40,6 +40,8 @@ Use ISO format (YYYY-MM-DD) for all dates in this repo.
 
 This is a documentation repo. Do not add `package.json`, build tooling, or application code. Markdown and plain text only.
 
+**Exception:** `sample/typescript-app/` is a TypeScript app used to test the skills in `skills/`. Application code is permitted inside that directory only.
+
 ---
 
 ## Shell Scripts (gh Extension)
