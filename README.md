@@ -14,7 +14,7 @@ The skills are delivered as a `gh` CLI extension that installs them into your ow
 Install as a `gh` CLI extension:
 
 ```sh
-gh extension install transformteamsg/gh-ai-first-taskforce
+gh extension install String-sg/gh-ai-first-taskforce
 ```
 
 Then run setup to install the taskforce's Claude Code skills into `~/.claude/skills/`:
