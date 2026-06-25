@@ -1,3 +1,7 @@
+## Motivation
+
+<why this issue needs to be fixed: the business or user need it addresses, in 2-3 sentences a PM can scan>
+
 ## User story
 
 As a [role], I want [capability], so that [benefit].
