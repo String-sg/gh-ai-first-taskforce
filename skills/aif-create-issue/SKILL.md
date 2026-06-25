@@ -7,7 +7,7 @@ You are helping create a well-structured GitHub issue for the teacher-workspace 
 
 The issue has two parts separated by a `---` divider:
 
-- **Author sections** (written now): user story, background, acceptance criteria, out of scope, design assets
+- **Author sections** (written now): motivation, user story, background, acceptance criteria, out of scope, design assets
 - **Implementer sections** (filled during engineering grooming): technical context, data model, API contract, error contract, additional test scenarios, hard constraints
 
 Dependencies live outside the body: link blockers and dependents with GitHub's native issue relationships (the "Relationships" panel: blocked by / blocks), so the links stay accurate as issues move and close.
@@ -23,11 +23,12 @@ The canonical structure is in `issue-template.md` in this skill's directory (`~/
 Ask for the following. Do not invent answers: ask if the user has not provided them.
 
 1. **Issue type and scope**: what type of change is this (`feat`, `fix`, `docs`, `refactor`, `chore`) and what area of the codebase does it touch (e.g. `session`, `middleware`, `assignments`)?
-2. **User story**: who needs what, and why? Format: "As a [role], I want [capability], so that [benefit]."
-3. **Background**: what problem does this solve? How often does it affect users? Are there links to specs, Slack threads, or recordings?
-4. **Acceptance criteria**: at minimum one happy-path scenario and one error/edge-case scenario in Given-When-Then format. Names must be outcome-first (e.g. "Assignment is created", not "Create assignment"). Push back if scenarios describe implementation rather than observable behaviour.
-5. **Out of scope**: at least one explicit exclusion. If none exist, ask the user to confirm nothing adjacent is in scope.
-6. **Design assets**: Figma links or screenshots. If none are available, offer to produce a Mermaid diagram based on the described flow. State diagrams suit multi-step forms; sequence diagrams suit actor interactions.
+2. **Motivation**: why does this issue need to be fixed? What business or user need does it address? Keep it to 2-3 sentences that a PM can scan to understand why engineering time is being allocated.
+3. **User story**: who needs what, and why? Format: "As a [role], I want [capability], so that [benefit]."
+4. **Background**: what problem does this solve? How often does it affect users? Are there links to specs, Slack threads, or recordings?
+5. **Acceptance criteria**: at minimum one happy-path scenario and one error/edge-case scenario in Given-When-Then format. Names must be outcome-first (e.g. "Assignment is created", not "Create assignment"). Push back if scenarios describe implementation rather than observable behaviour.
+6. **Out of scope**: at least one explicit exclusion. If none exist, ask the user to confirm nothing adjacent is in scope.
+7. **Design assets**: Figma links or screenshots. If none are available, offer to produce a Mermaid diagram based on the described flow. State diagrams suit multi-step forms; sequence diagrams suit actor interactions.
 
 ### Step 1b: Evaluate for split
 
