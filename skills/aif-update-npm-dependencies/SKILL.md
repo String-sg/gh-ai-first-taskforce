@@ -96,7 +96,8 @@ flowchart TD
     A([Step 0: detect PM / abort if not JS]) --> AA([audit])
     AA --> B{Vulnerabilities?}
     B -- no --> Z([Done ✓])
-    B -- yes --> C[Classify each vuln]
+    B -- yes --> R[Reconcile existing overrides\nremove stale, re-pin bad ones]
+    R --> C[Classify each vuln]
     C --> D{Direct dep?}
 
     D -- yes --> E[Verify safe version exists]
@@ -115,7 +116,7 @@ flowchart TD
     L -- yes --> N[update &lt;parent&gt;]
     N --> K
     L -- no - abandoned / at latest / blocked --> O[Verify safe version exists]
-    O --> P[Add overrides / resolutions\nusing caret range]
+    O --> P[Add overrides / resolutions\npinned to exact safe version]
     P --> K
 
     K([audit - final]) --> Q{All clear?}
@@ -168,11 +169,33 @@ For npm, Yarn, and Bun, there's no equally universal native setting — rely on 
 
 ## Step 4: Fix (escalate in order)
 
-### A. Direct dependency — update it
+### A. Reconcile any existing overrides first
+
+Before escalating anything, deal with the overrides / `resolutions` already in `package.json`. Do this first for two reasons:
+
+- **An override forces its pinned version across the whole tree.** If a flagged package sits under an existing override, no amount of updating or parent-upgrading will change what resolves — the override wins. Escalating against it is wasted effort; you must fix the override itself.
+- **Overrides accumulate and rot.** A parent may since have shipped a fix, making the override redundant. Escalating on top of stale overrides just adds more cruft to reason about later.
+
+**Important:** the **Show dependency chain** command with an override in place always shows the *overridden* version — it cannot tell you whether the override is still needed. You must remove the override and reinstall to see natural resolution.
+
+For each existing override / `resolutions` entry:
+
+1. Remove it from `package.json`
+2. Run the plain install command
+3. Check the naturally-resolved version with **Show dependency chain**
+4. Run **Audit**
+5. Audit clean → the override was stale; leave it removed
+6. Audit reports a vulnerability → the override is still needed. Restore it — but if the vulnerability is in the *pinned version itself* (a CVE landed in the version you pinned), re-pin to a newer patched version per section E rather than restoring the bad one.
+
+Then continue the ladder below for whatever the audit still reports.
+
+### B. Direct dependency — update it
 
 Run **Update one (within range)**. If a major bump is required, use **Install an exact safe version** with the safe version.
 
-### B. Transitive — try updating everything first
+**Watch for an exact-pinned spec.** **Update one** only moves a dependency *within its declared range*. If the manifest pins an exact version (e.g. `"fast-xml-parser": "4.2.5"`, no `^` or `~`), that range is a single version — so `npm update` / `pnpm update` / `bun update` is a **no-op even when a safe newer version exists**, and you'll be misled into thinking nothing can be done. Whenever the current spec is exact, reach straight for **Install an exact safe version** to rewrite the pin. This applies to any bump, not just majors. (The same is true for an exact-pinned *parent* in section D.)
+
+### C. Transitive — try updating everything first
 
 Run **Update all (within ranges)**, then **Audit** again. This pulls transitive deps to the newest version allowed by their parents' declared ranges, and often resolves the vulnerability with no further action.
 
@@ -184,22 +207,27 @@ A forced re-resolution is the right tool here because the stale entry lives in t
 
 **STOP HERE if resolved.** Do not escalate to parent upgrades or overrides until you've confirmed the version did not change after a forced reinstall.
 
-### C. Transitive — upgrade the parent if still unresolved
+### D. Transitive — upgrade the parent if still unresolved
 
 The parent's declared range may be too narrow to pull in the patched transitive version. Identify the top-level parent with the **Show dependency chain** command, then run **Update one (within range)** on the parent. If a major bump is needed, use **Install an exact safe version**. Re-run **Audit**.
 
 **STOP HERE if resolved.**
 
-### D. Override — last resort only
+### E. Override — last resort only
 
-Use only when the parent **cannot** be upgraded (abandoned, API incompatibility, blocked by other constraints). Add the override to `package.json` using a **caret range** so future patch releases are still applied. The field name depends on the package manager (see the table):
+Use only when the parent **cannot** be upgraded (abandoned, API incompatibility, blocked by other constraints). Pin the override to the **exact patched version** — not a caret (`^`) or `>=` range. Two reasons:
+
+- **Blast radius.** An override forces its version across the *entire* tree, including on parents that only ever expected an older range. The narrower you pin, the smaller the chance of a compatibility break.
+- **Cooldown.** A range is actively unsafe here: `^1.2.3` lets the install silently adopt a *future* patch the moment it publishes, with **no 7-day cooldown** — precisely the fresh-release supply-chain risk this skill defends against everywhere else. Pinning exact keeps you in control; re-audit and re-pin deliberately when a newer patched version is actually needed.
+
+The field name depends on the package manager (see the table):
 
 **npm / Bun** — `overrides`:
 
 ```json
 {
   "overrides": {
-    "vulnerable-package": "^<safe-version>"
+    "vulnerable-package": "<safe-version>"
   }
 }
 ```
@@ -210,7 +238,7 @@ Use only when the parent **cannot** be upgraded (abandoned, API incompatibility,
 {
   "pnpm": {
     "overrides": {
-      "vulnerable-package": "^<safe-version>"
+      "vulnerable-package": "<safe-version>"
     }
   }
 }
@@ -221,16 +249,28 @@ Use only when the parent **cannot** be upgraded (abandoned, API incompatibility,
 ```json
 {
   "resolutions": {
-    "vulnerable-package": "^<safe-version>"
+    "vulnerable-package": "<safe-version>"
   }
 }
 ```
 
-Then run the package manager's plain install command (`npm install` / `pnpm install` / `yarn install` / `bun install`) and **Audit** again. Document in the PR description why the override was necessary and what prevents a proper upgrade.
+Then run the package manager's plain install command (`npm install` / `pnpm install` / `yarn install` / `bun install`) and **Audit** again.
+
+**Confirm the forced version is actually compatible.** Because an override bypasses the resolver's normal range-checking, it can install a version a parent never declared support for. A clean audit does *not* mean the tree is sound. Check for the signals that the forced version doesn't fit:
+
+- **Peer-dependency warnings or `ERESOLVE` errors in the install output** — don't dismiss them. An override that provokes these is forcing a version some parent explicitly disagrees with.
+- **`npm ls <pkg>`** (or the PM equivalent from **Show dependency chain**) flagging the forced version as `invalid` or `unmet peer`.
+- The **test suite** (Step 6) remains the backstop for behavioural breaks the install step can't surface.
+
+If the safe version is incompatible with a parent that can't be upgraded, you're wedged between a known vulnerability and a broken build — don't paper over it. Prefer the safe version *closest* to what the parent expects (e.g. the lowest patched release in the major the parent already allows). If **no** version is both safe and compatible, stop and surface the tradeoff to a human — the same rule as the 7-day-cooldown deadlock in Step 3.
+
+Document in the PR description why the override was necessary, what prevents a proper upgrade, and any compatibility caveats.
 
 ## Step 5: Final Verification
 
 Run **Audit** one more time. All vulnerabilities must be resolved. If any remain, document them with a reason (e.g., no upstream fix exists yet).
+
+**If you upgraded a parent this cycle, re-check any override you kept in Step 4A** — the upgrade may have made it redundant. Remove it, reinstall, and audit; if clean, leave it removed. This catches overrides that only became stale *because* of the upgrades you just did (which the up-front reconciliation couldn't have known about).
 
 ## Step 6: Run the Test Suite
 
@@ -249,24 +289,7 @@ If tests fail, check whether the failure is in code that touches the updated pac
 
 If the project has no test suite, note that explicitly in the PR description so reviewers know the change is unvalidated.
 
-## Step 7: Clean Up Stale Overrides
-
-Overrides accumulate and rot. After any dependency upgrade cycle, test each entry in the overrides/`resolutions` field for staleness.
-
-**Important:** the **Show dependency chain** command with an override in place always shows the *overridden* version — it cannot tell you whether the override is still needed. You must remove the override and reinstall to see natural resolution.
-
-For each override:
-
-1. Remove it from `package.json`
-2. Run the plain install command
-3. Check the naturally-resolved version with **Show dependency chain**
-4. Run **Audit**
-5. If audit is clean → the override is stale, leave it removed
-6. If audit reports a vulnerability → restore the override
-
-Keeping stale overrides masks future vulnerabilities and makes dependency trees harder to reason about.
-
-## Step 8: Commit, push, and open a PR
+## Step 7: Commit, push, and open a PR
 
 Once the audit is clean and tests pass, offer to ship the changes — don't force it:
 
@@ -332,8 +355,9 @@ If yes, run the full flow:
 | Forgetting the final audit                         | Always re-run audit — a fix for one vuln can reveal others                             |
 | Skipping tests after the update                    | A clean audit doesn't mean nothing broke — run the full test suite before committing   |
 | Adding transitive deps as direct devDependencies   | Use overrides/`resolutions` instead; don't pollute devDependencies                     |
-| Using `>=version` in overrides                     | Use `^version` (caret) so resolution stays within the safe major, not any future major |
+| Using a range (`^` or `>=`) in an override         | Pin the *exact* patched version — a range widens the blast radius and lets a future patch install with no 7-day cooldown |
 | Putting `overrides` where the PM expects `resolutions` (or vice versa) | Match the field to the package manager — npm/Bun use `overrides`, pnpm uses `pnpm.overrides`, Yarn uses `resolutions` |
 | Leaving overrides in place permanently             | Check after each upgrade cycle whether the parent now resolves safely on its own       |
 | Overriding before confirming a safe version exists | Check published versions / dist-tags first to confirm the patched release exists       |
+| Assuming a clean audit means the override tree is sound | An override skips range-checking — also check install output for `ERESOLVE` / peer warnings and `npm ls` for `invalid` markers; if safe + compatible is impossible, ask a human |
 | Installing a version published in the last 7 days  | Apply the cooldown — prefer the oldest patched release; if only a fresh version fixes it, ask a human before installing |

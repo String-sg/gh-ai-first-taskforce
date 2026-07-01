@@ -88,6 +88,32 @@
         {"text": "Runs npm audit after the fix to verify the vulnerability is resolved", "passed": null, "evidence": ""},
         {"text": "Detects there is no test script and explicitly flags this (does NOT silently skip or pretend tests passed)", "passed": null, "evidence": ""}
       ]
+    },
+    {
+      "id": 7,
+      "name": "reconcile-stale-override",
+      "fixture": "evals/projects/npm-stale-override",
+      "prompt": "We're prepping reporting-api for a merge and want dependency hygiene clean. Can you run an audit, and also check whether that minimatch override we added months ago is still doing anything? The parents that originally needed it have moved on a lot since.",
+      "expected_output": "Agent detects npm, and BEFORE escalating anything treats the existing minimatch override as the first order of business (Step 4A reconcile): recognizes that npm why/ls with the override in place always shows the overridden version and cannot reveal staleness, so it must remove the override, reinstall, check natural resolution, and re-audit. It leaves the override removed if the tree resolves safe on its own, or restores/re-pins it if removal reintroduces a vulnerability. It does not blindly keep the override or escalate around it.",
+      "assertions": [
+        {"text": "Identifies the package manager as npm (from package-lock.json)", "passed": null, "evidence": ""},
+        {"text": "Reconciles the EXISTING override first (removes it, reinstalls, re-audits to test staleness) rather than escalating around it or leaving it untouched", "passed": null, "evidence": ""},
+        {"text": "Notes that the dependency-chain command with an override in place shows the overridden version and cannot reveal whether the override is still needed", "passed": null, "evidence": ""},
+        {"text": "States the decision rule: leave removed if audit is clean, restore/re-pin if removal reintroduces the vulnerability", "passed": null, "evidence": ""}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "add-override-exact-pin",
+      "fixture": "evals/projects/pnpm-needs-override",
+      "prompt": "pnpm audit flags a high-severity path-traversal in `tar`, pulled in transitively by `legacy-xml-adapter`. legacy-xml-adapter is abandoned — last publish was 2019 and 1.4.0 is the newest release that exists, so it can't be upgraded. The patched tar is 6.2.1, which has been out for over a year. Please resolve it.",
+      "expected_output": "Agent detects pnpm, walks the escalation ladder (update-all, then confirms the parent legacy-xml-adapter cannot be upgraded because it is abandoned / already at its latest), and only then reaches for an override as a last resort. It adds a pnpm.overrides entry pinned to the EXACT patched version (6.2.1), NOT a caret or >= range. It then verifies compatibility — checking install output for ERESOLVE/peer warnings and the resolved tree for invalid markers — rather than assuming a clean audit means the forced version fits.",
+      "assertions": [
+        {"text": "Identifies the package manager as pnpm (from pnpm-lock.yaml)", "passed": null, "evidence": ""},
+        {"text": "Reaches an override only after confirming the parent cannot be upgraded (abandoned / at latest), not as the first move", "passed": null, "evidence": ""},
+        {"text": "Adds the override in the pnpm.overrides field pinned to the EXACT version (6.2.1), NOT a caret (^) or >= range", "passed": null, "evidence": ""},
+        {"text": "Verifies compatibility after applying the override (checks install output for ERESOLVE/peer warnings, dependency tree for invalid/unmet-peer markers) rather than trusting a clean audit alone", "passed": null, "evidence": ""}
+      ]
     }
   ]
 }
